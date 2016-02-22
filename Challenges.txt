@@ -1,13 +1,21 @@
 1. Get screen output in real time
 
-2. Process screen output in real time as game is playing
+2. Process screen output in real time as game is playing (Parallel computation potentially)
+    a. Cancel Rotation
+    b. Cancel Pulse
+    c. Cancel Color
+    d. Cancel Distortion/3D
+    e. Create Safest Path (Series of inputs over time)
 
 3. Detect Player
-    a. Detect player velocity/direction
+    a. Detect player velocity/direction (Allows to predict into the future where you will be given a series of inputs)
 
 4. Detect Hostile Lines
     a. Detect Hostile Line Velocity/Acceleration
+    b. Object Recognition/Tracking over multiple frames for varying velocity lines.
 
 5. Act on processed information in real time (overriding inputs)
 
-6. Method for AI learning (Machine Learning?)
+6. Method for AI learning (Machine Learning potentially)
+
+7. Create custom levels for basic challenges (Really easy levels)
