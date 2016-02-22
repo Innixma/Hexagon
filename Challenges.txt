@@ -2,6 +2,12 @@
 
 2. Process screen output in real time as game is playing
 
-3. Act on processed information in real time (overriding inputs)
+3. Detect Player
+    a. Detect player velocity/direction
 
-4. Method for AI learning (Machine Learning?)
+4. Detect Hostile Lines
+    a. Detect Hostile Line Velocity/Acceleration
+
+5. Act on processed information in real time (overriding inputs)
+
+6. Method for AI learning (Machine Learning?)
