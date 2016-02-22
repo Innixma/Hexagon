@@ -1,0 +1,7 @@
+1. Get screen output in real time
+
+2. Process screen output in real time as game is playing
+
+3. Act on processed information in real time (overriding inputs)
+
+4. Method for AI learning (Machine Learning?)
