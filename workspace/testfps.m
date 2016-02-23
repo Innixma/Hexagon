@@ -10,4 +10,4 @@ end
 t = toc;
 fps = frames / t;
 fprintf('captured %d frames in %f seconds\n', frames, t');
-fprintf('performance ~%.2f fps\n', round(fps,1));
+fprintf('performance ~%.1f fps\n', round(fps,1));
