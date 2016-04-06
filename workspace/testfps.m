@@ -6,6 +6,7 @@ t = 0;
 tic;
 for i = 1:frames
     img = screencapture(0, 0, w, h);
+    eimg = edge(rgb2gray(img), 'sobel');
 end
 t = toc;
 fps = frames / t;
