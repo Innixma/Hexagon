@@ -2,7 +2,7 @@ function [] = testfps(w,h,frames)
 fprintf('processing...\n');
 tic;
 for i = 1:frames
-    screencapture_old(0, 0, w, h);
+    screencapture(0, 0, w, h);
 end
 t = toc;
 fps = frames / t;
