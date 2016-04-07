@@ -201,25 +201,25 @@ for i = 1:frames
         if dangerZones(mod(playerWallPosition,4)+1) == 0 % Left neighbor
             movingLeft = 1;
             if movingRight == 1
-                keyreleaseright();
+                keyaction('right','release');
                 movingRight = 0;
             end
-            keypressleft();
+            keyaction('left','press');
         else
             movingRight = 1;
             if movingLeft == 1
-                keyreleaseleft();
+                keyaction('left', 'release');
                 movingLeft = 0;
             end
-            keypressright();
+            keyaction('right','press');
         end
     else
         if movingLeft == 1
-            keyreleaseleft();
+            keyaction('left','release');
             movingLeft = 0;
         end
         if movingRight == 1
-            keyreleaseright();
+            keyaction('right','release');
             movingRight = 0;
         end
     end
