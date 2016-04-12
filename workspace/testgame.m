@@ -36,15 +36,36 @@
 % Bottom right = (1038, 586): THUS IGNORE THIS AREA.
 % 155 by 108 square
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameters:
+frames = 12000; % How long code runs
 
-frames = 3000; % How long code runs
+centering_threshold = 35; % Angle away from the center of a safe side that the AI is content with being.
+% Lower value = More picky with its position
+
+% Window location coords, (1,1) = top left
+x_offset = 0;
+y_offset = 20;
+x_max = 1920;
+y_max = 1020;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialization Variables
 closeleft = 0;
 closeright = 0;
 closeup = 0;
 closedown = 0;
 movingLeft = 0;
 movingRight = 0;
-angle = 0;
+player_angle = 0;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+x_center = round(x_max/2);
+y_center = round(y_max/2);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 for i = 1:frames
     %tic;
@@ -54,12 +75,22 @@ for i = 1:frames
     upWall = 0;
     downWall = 0;
 
-    leftImg = rgb2gray(screencapture(0, 540, 960, 1));
-    rightImg = rgb2gray(screencapture(960, 540, 960, 1));
-    upImg = rgb2gray(screencapture(960, 0, 1, 540));
-    downImg = rgb2gray(screencapture(960, 540, 1, 540));
-    centerImg = rgb2gray(screencapture(823, 441, 275, 188)); % 60,37 out from square
-    centerImg(36:146, 59:216) = 255; % Remove center box to find player
+    %tic;
+    capture_img = screencapture(x_offset, y_offset, x_max, y_max);    
+    leftImg = capture_img(y_center, 1:x_center);
+    rightImg = capture_img(y_center, x_center+1:x_max);
+    upImg = capture_img(1:y_center, x_center);
+    downImg = capture_img(y_center+1:y_max, x_center);
+    centerImg = capture_img(y_center-y_max/10+3:y_center+y_max/10-3,x_center-y_max/10-35:x_center+y_max/10+35);
+    centerImg_size = size(centerImg);
+    centerImg_center = floor(centerImg_size/2);
+    %toc;
+    centerImg(centerImg_center(1)-54:centerImg_center(1)+58,centerImg_center(2)-78:centerImg_center(2)+80) = 255;
+    %centerImg(37:147, 60:217) = 255; % Remove center box to find player
+    %imshow(centerImg);
+    %centerImg(100, 100) = 0;
+    %imshow(centerImg);
+    %break;
     
     if closeleft > 0
         closeleft = closeleft - 1;
@@ -75,53 +106,53 @@ for i = 1:frames
     end
     
     % Find Walls
-    for x = -810:-1
+    for x = -820:-1
        if leftImg(1,-x) ~= 255
             leftWall = 1;
             if mod(i,10) == 0
                 disp(['Left Wall! x = ' int2str(-x)]);
             end
             
-            if x <= -790 % If wall disrupts player detection!
+            if x <= -820 % If wall disrupts player detection!
                 %disp('CLOSE LEFT');
                 closeleft = 3;
             end
             break;
        end
     end
-    for x = 150:960
+    for x = 140:960
        if rightImg(1,x) ~= 255
             rightWall = 1; 
             if mod(i,10) == 0
                 disp(['Right Wall! x = ' int2str(x+960)]);
             end
-            if x <= 170 % If wall disrupts player detection!
+            if x <= 140 % If wall disrupts player detection!
                 %disp('CLOSE RIGHT');
                 closeright = 3;
             end
             break;
        end
     end
-    for y = -400:-1
+    for y = -410:-1
        if upImg(-y,1) ~= 255
             upWall = 1;
             if mod(i,10) == 0
                 disp(['Up Wall! y = ' int2str(-y)]);
             end
-            if y <= -400 % If wall disrupts player detection!
+            if y <= -410 % If wall disrupts player detection!
                 %disp('CLOSE UP');
                 closeup = 3;
             end
             break;
        end
     end
-    for y = 140:490 % Edited this due to my taskbar being black. Fix in future
+    for y = 100:510 % Edited this due to my taskbar being black. Fix in future
        if downImg(y,1) ~= 255
             downWall = 1;
             if mod(i,10) == 0
-                disp(['Down Wall! y = ' int2str(y+540)]);
+                disp(['Down Wall! y = ' int2str(y+510)]);
             end
-            if y <= 140 % If wall disrupts player detection!
+            if y <= 100 % If wall disrupts player detection!
                 %disp('CLOSE DOWN');
                 closedown = 3;
             end
@@ -159,34 +190,32 @@ for i = 1:frames
     if playerFound == true
         xRel = playerCoords(1)/pixelCount;
         yRel = playerCoords(2)/pixelCount;
-        
-        
-        %xRel = x - xMax/2;
-        %yRel = yMax/2 - y;
 
-        angle = 180 / pi * atan(yRel/xRel);
+        player_angle = 180 / pi * atan(yRel/xRel);
         if xRel < 0 && yRel < 0
-            angle = angle + 180;
+            player_angle = player_angle + 180;
         elseif xRel < 0 && yRel >= 0
-            angle = 180 + angle;
+            player_angle = 180 + player_angle;
         elseif xRel >= 0 && yRel < 0
-            angle = 360 + angle;
+            player_angle = 360 + player_angle;
         end
         if mod(i,10) == 0
-            disp(['PLAYER AT Theta = ' num2str(angle)]);
+            disp(['PLAYER AT Theta = ' num2str(player_angle)]);
         end
     end
     
     % Act on information
     wallAngles = [45 135 225 315];
-    for j = 1:size(wallAngles)
-       if wallAngles(j) > angle
+    idealAngles = [0 90 180 270];
+    for j = 1:size(wallAngles,2)
+       if wallAngles(j) > player_angle
           playerWallPosition = j;
           break; 
        end
     end
     if playerWallPosition == 0
-       playerWallPosition = size(wallAngles); 
+       %playerWallPosition = size(wallAngles);
+       playerWallPosition = 1;
     end
     
     
@@ -224,7 +253,41 @@ for i = 1:frames
         end
     end
     
+    % Fix angle if safe
+    if dangerZones(playerWallPosition) == 0 && playerFound == true % Safe
+       % Reposition to the center
+       idealAngle = idealAngles(playerWallPosition);
+       temp_player_angle = player_angle;
+       if temp_player_angle > wallAngles(size(wallAngles,2)) % Fix circular angle
+           temp_player_angle = temp_player_angle - 360;
+       end
+       if idealAngle - temp_player_angle > centering_threshold % Move player left
+           movingLeft = 1;
+           if movingRight == 1
+                keyaction('right', 'release');
+                movingRight = 0;
+           end
+           keypressleft();
+       elseif idealAngle - temp_player_angle < -centering_threshold % Move player right
+            movingRight = 1;
+            if movingLeft == 1
+                keyaction('left', 'release');
+                movingLeft = 0;
+            end
+            keyaction('right', 'press');
+       else
+            if movingLeft == 1
+                keyaction('left', 'release');
+                movingLeft = 0;
+            end
+            if movingRight == 1
+                keyaction('right', 'release');
+                movingRight = 0;
+            end    
+       end
+       
+    end
     
-    
+    %toc;
 end
 
