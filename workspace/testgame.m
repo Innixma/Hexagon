@@ -40,7 +40,7 @@
 % Parameters:
 frames = 12000; % How long code runs
 
-centering_threshold = 35; % Angle away from the center of a safe side that the AI is content with being.
+centering_threshold = 40; % Angle away from the center of a safe side that the AI is content with being.
 % Lower value = More picky with its position
 
 % Window location coords, (1,1) = top left
