@@ -262,12 +262,12 @@ for i = 1:frames
            temp_player_angle = temp_player_angle - 360;
        end
        if idealAngle - temp_player_angle > centering_threshold % Move player left
-           movingLeft = 1;
-           if movingRight == 1
+            movingLeft = 1;
+            if movingRight == 1
                 keyaction('right', 'release');
                 movingRight = 0;
-           end
-           keypressleft();
+            end
+            keyaction('left', 'press');
        elseif idealAngle - temp_player_angle < -centering_threshold % Move player right
             movingRight = 1;
             if movingLeft == 1
