@@ -38,16 +38,25 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameters:
-frames = 12000; % How long code runs
-
-centering_threshold = 40; % Angle away from the center of a safe side that the AI is content with being.
-% Lower value = More picky with its position
-
 % Window location coords, (1,1) = top left
 x_offset = 0;
 y_offset = 20;
 x_max = 1920;
 y_max = 1020;
+
+frames = 12000; % How long code runs
+
+centering_threshold = 40; % Angle away from the center of a safe side that the AI is content with being.
+
+center_areafix_x = x_max/10-55; % Change these two variables to accurately include center box and player for player detection
+center_areafix_y = y_max/10-3;
+
+center_boxfix_x = 80; % Change these two variables to accurately remove center box from player detection
+center_boxfix_y = 60;
+
+% Lower value = More picky with its position
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -81,11 +90,16 @@ for i = 1:frames
     rightImg = capture_img(y_center, x_center+1:x_max);
     upImg = capture_img(1:y_center, x_center);
     downImg = capture_img(y_center+1:y_max, x_center);
-    centerImg = capture_img(y_center-y_max/10+3:y_center+y_max/10-3,x_center-y_max/10-35:x_center+y_max/10+35);
+    %centerImg = capture_img(y_center-y_max/10+3:y_center+y_max/10-3,x_center-y_max/10-35:x_center+y_max/10+35);
+    centerImg = capture_img(y_center-center_areafix_y:y_center+center_areafix_y,x_center-center_areafix_x:x_center+center_areafix_x);
     centerImg_size = size(centerImg);
     centerImg_center = floor(centerImg_size/2);
     %toc;
-    centerImg(centerImg_center(1)-54:centerImg_center(1)+58,centerImg_center(2)-78:centerImg_center(2)+80) = 255;
+    %centerImg(centerImg_center(1)-54:centerImg_center(1)+58,centerImg_center(2)-78:centerImg_center(2)+80) = 255;
+    centerImg(centerImg_center(1)-center_boxfix_y:centerImg_center(1)+center_boxfix_y,centerImg_center(2)-center_boxfix_x:centerImg_center(2)+center_boxfix_x) = 255;
+    
+    
+    
     %centerImg(37:147, 60:217) = 255; % Remove center box to find player
     %imshow(centerImg);
     %centerImg(100, 100) = 0;
