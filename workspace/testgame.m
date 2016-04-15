@@ -44,17 +44,21 @@ y_offset = 20;
 x_max = 1920;
 y_max = 1020;
 
+
+
 frames = 12000; % How long code runs
 
+% Lower value = More picky with its position, more prone to error
 centering_threshold = 40; % Angle away from the center of a safe side that the AI is content with being.
 
 center_areafix_x = x_max/10-55; % Change these two variables to accurately include center box and player for player detection
 center_areafix_y = y_max/10-3;
 
 center_boxfix_x = 80; % Change these two variables to accurately remove center box from player detection
-center_boxfix_y = 60;
+center_boxfix_y = 60; % Too large of values will also remove the player, so be careful
 
-% Lower value = More picky with its position
+wall_start_x = center_areafix_x + 10; % Increase if wall finder is detecting the player as a wall
+wall_start_y = center_areafix_y + 10;
 
 
 
@@ -72,8 +76,10 @@ player_angle = 0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-x_center = round(x_max/2);
-y_center = round(y_max/2);
+x_half = round(x_max/2);
+y_half = round(y_max/2);
+x_center = x_half;
+y_center = y_half;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 for i = 1:frames
@@ -85,7 +91,7 @@ for i = 1:frames
     downWall = 0;
 
     %tic;
-    capture_img = screencapture(x_offset, y_offset, x_max, y_max);    
+    capture_img = screencapture(x_offset, y_offset, x_max, y_max);
     leftImg = capture_img(y_center, 1:x_center);
     rightImg = capture_img(y_center, x_center+1:x_max);
     upImg = capture_img(1:y_center, x_center);
@@ -100,9 +106,6 @@ for i = 1:frames
     
     
     
-    %centerImg(37:147, 60:217) = 255; % Remove center box to find player
-    %imshow(centerImg);
-    %centerImg(100, 100) = 0;
     %imshow(centerImg);
     %break;
     
@@ -120,53 +123,53 @@ for i = 1:frames
     end
     
     % Find Walls
-    for x = -820:-1
+    for x = -x_half+wall_start_x:-1
        if leftImg(1,-x) ~= 255
             leftWall = 1;
             if mod(i,10) == 0
                 disp(['Left Wall! x = ' int2str(-x)]);
             end
             
-            if x <= -820 % If wall disrupts player detection!
+            if x <= -x_half+wall_start_x % If wall disrupts player detection!
                 %disp('CLOSE LEFT');
                 closeleft = 3;
             end
             break;
        end
     end
-    for x = 140:960
+    for x = wall_start_x:x_half
        if rightImg(1,x) ~= 255
             rightWall = 1; 
             if mod(i,10) == 0
-                disp(['Right Wall! x = ' int2str(x+960)]);
+                disp(['Right Wall! x = ' int2str(x+x_half)]);
             end
-            if x <= 140 % If wall disrupts player detection!
+            if x <= wall_start_x % If wall disrupts player detection!
                 %disp('CLOSE RIGHT');
                 closeright = 3;
             end
             break;
        end
     end
-    for y = -410:-1
+    for y = -y_half+wall_start_y:-1
        if upImg(-y,1) ~= 255
             upWall = 1;
             if mod(i,10) == 0
                 disp(['Up Wall! y = ' int2str(-y)]);
             end
-            if y <= -410 % If wall disrupts player detection!
+            if y <= -y_half+wall_start_y % If wall disrupts player detection!
                 %disp('CLOSE UP');
                 closeup = 3;
             end
             break;
        end
     end
-    for y = 100:510 % Edited this due to my taskbar being black. Fix in future
+    for y = wall_start_y:y_half % Edited this due to my taskbar being black. Fix in future
        if downImg(y,1) ~= 255
             downWall = 1;
             if mod(i,10) == 0
                 disp(['Down Wall! y = ' int2str(y+510)]);
             end
-            if y <= 100 % If wall disrupts player detection!
+            if y <= wall_start_y % If wall disrupts player detection!
                 %disp('CLOSE DOWN');
                 closedown = 3;
             end
