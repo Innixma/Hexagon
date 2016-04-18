@@ -44,6 +44,14 @@ y_offset = 20;
 x_max = 1920;
 y_max = 1020;
 
+[x_offset,y_offset,x_max,y_max] = screenselect();
+
+if mod(x_max,2) ~= 0
+    x_max = x_max - 1;   
+end
+if mod(y_max,2) ~= 0
+    y_max = y_max - 1;   
+end
 
 
 frames = 12000; % How long code runs
@@ -51,11 +59,13 @@ frames = 12000; % How long code runs
 % Lower value = More picky with its position, more prone to error
 centering_threshold = 40; % Angle away from the center of a safe side that the AI is content with being.
 
-center_areafix_x = x_max/10-55; % Change these two variables to accurately include center box and player for player detection
-center_areafix_y = y_max/10-3;
+%center_areafix_x = round(x_max/10)-55; % Change these two variables to accurately include center box and player for player detection
+center_areafix_x = round(x_max/10)-3;
+center_areafix_y = round(y_max/10)-3;
 
-center_boxfix_x = 80; % Change these two variables to accurately remove center box from player detection
-center_boxfix_y = 60; % Too large of values will also remove the player, so be careful
+% These params don't matter for Danesh, make them = 1
+center_boxfix_x = round(center_areafix_x/1.25); % Change these two variables to accurately remove center box from player detection
+center_boxfix_y = round(center_areafix_y/1.25); % Too large of values will also remove the player, so be careful
 
 wall_start_x = center_areafix_x + 10; % Increase if wall finder is detecting the player as a wall
 wall_start_y = center_areafix_y + 10;
@@ -179,7 +189,7 @@ for i = 1:frames
     
     % Find Player
     %tic
-    xMax = length(centerImg);
+    xMax = length(centerImg(1,:));
     yMax = length(centerImg(:,1));
     
     % Walls can enter players area, so need to consider them
