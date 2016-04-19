@@ -1,5 +1,7 @@
 function [H,Tv] = find_rays(M,n,low,high)
-
+% normalize M
+M = M - min(M(:));
+M = M ./ max(M(:));
 % create image B by selecting values in M between high, low
 B = M .* (M > low) .* (M < high);
 % normalize B
