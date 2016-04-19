@@ -1,4 +1,13 @@
 function [H,Tr] = hough_rays(E,tbinres)
+% HOUGH_RAYS Modified Hough transform to find lines only intersecting the center
+%	Inputs:
+%		E			An image of thinned,threshholded edges (must be boolean).
+%		tbinres		Resolution of theta parameter output, 1x is 180 degrees.
+%	Outputs:
+%		H			The output of the hough transform, a vector containing votes
+%					for each theta parameter.
+%		Tr			Lookup table for theta values given an index in H.
+
 if nargin == 1;
     tbinres = 1;
 end
