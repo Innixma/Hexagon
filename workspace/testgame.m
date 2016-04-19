@@ -121,11 +121,11 @@ for i = 1:frames
     %centerImg(centerImg_center(1)-54:centerImg_center(1)+58,centerImg_center(2)-78:centerImg_center(2)+80) = 1;
     centerImg(centerImg_center(1)-center_boxfix_y:centerImg_center(1)+center_boxfix_y,centerImg_center(2)-center_boxfix_x:centerImg_center(2)+center_boxfix_x) = 1;
     
-    %detect_player_v5(Img)
+    detect_player_nick(centerImg);
     
     %imshow(capture_img);
     %imshow(centerImg);
-    %break;
+    break;
 
     if closeleft > 0
         closeleft = closeleft - 1;
