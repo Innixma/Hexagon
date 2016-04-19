@@ -1,4 +1,7 @@
 function [H,Tv] = find_rays(M,n,low,high)
+if nargin == 2
+    low = 0; high = 1;
+end
 % normalize M
 M = M - min(M(:));
 M = M ./ max(M(:));
@@ -8,7 +11,7 @@ B = M .* (M > low) .* (M < high);
 B = B - min(B(:));
 B = B ./ max(B(:));
 % edge detection on B
-E = edge(B);
+E = edge(B,'sobel',0);
 
 tic;
 [H,T] = hough_rays(E);
