@@ -1,4 +1,4 @@
-function [H,Tv] = find_lines(M,n,low,high)
+function [H,Tv] = find_rays(M,n,low,high)
 B = normalize(M .* (M > low) .* (M < high));
 E = edge(B);
 
