@@ -55,6 +55,7 @@ end
 
 
 frames = 12000; % How long code runs
+image_threshold = 0.5; % From 1 to 0, threshold is more strict with higher number
 
 % Lower value = More picky with its position, more prone to error
 centering_threshold = 40; % Angle away from the center of a safe side that the AI is content with being.
@@ -99,9 +100,15 @@ for i = 1:frames
     rightWall = 0; 
     upWall = 0;
     downWall = 0;
-
+    
     %tic;
     capture_img = screencapture(x_offset, y_offset, x_max, y_max);
+    % make it binary
+    
+    capture_img = im2bw(capture_img, image_threshold);
+    
+    %capture_img = imcomplement(capture_img);
+    
     leftImg = capture_img(y_center, 1:x_center);
     rightImg = capture_img(y_center, x_center+1:x_max);
     upImg = capture_img(1:y_center, x_center);
@@ -110,15 +117,16 @@ for i = 1:frames
     centerImg = capture_img(y_center-center_areafix_y:y_center+center_areafix_y,x_center-center_areafix_x:x_center+center_areafix_x);
     centerImg_size = size(centerImg);
     centerImg_center = floor(centerImg_size/2);
-    %toc;
-    %centerImg(centerImg_center(1)-54:centerImg_center(1)+58,centerImg_center(2)-78:centerImg_center(2)+80) = 255;
-    centerImg(centerImg_center(1)-center_boxfix_y:centerImg_center(1)+center_boxfix_y,centerImg_center(2)-center_boxfix_x:centerImg_center(2)+center_boxfix_x) = 255;
     
+    %centerImg(centerImg_center(1)-54:centerImg_center(1)+58,centerImg_center(2)-78:centerImg_center(2)+80) = 1;
+    centerImg(centerImg_center(1)-center_boxfix_y:centerImg_center(1)+center_boxfix_y,centerImg_center(2)-center_boxfix_x:centerImg_center(2)+center_boxfix_x) = 1;
     
+    %detect_player_v5(Img)
     
+    %imshow(capture_img);
     %imshow(centerImg);
     %break;
-    
+
     if closeleft > 0
         closeleft = closeleft - 1;
     end
@@ -134,7 +142,7 @@ for i = 1:frames
     
     % Find Walls
     for x = -x_half+wall_start_x:-1
-       if leftImg(1,-x) ~= 255
+       if leftImg(1,-x) ~= 1
             leftWall = 1;
             if mod(i,10) == 0
                 disp(['Left Wall! x = ' int2str(-x)]);
@@ -148,7 +156,7 @@ for i = 1:frames
        end
     end
     for x = wall_start_x:x_half
-       if rightImg(1,x) ~= 255
+       if rightImg(1,x) ~= 1
             rightWall = 1; 
             if mod(i,10) == 0
                 disp(['Right Wall! x = ' int2str(x+x_half)]);
@@ -161,7 +169,7 @@ for i = 1:frames
        end
     end
     for y = -y_half+wall_start_y:-1
-       if upImg(-y,1) ~= 255
+       if upImg(-y,1) ~= 1
             upWall = 1;
             if mod(i,10) == 0
                 disp(['Up Wall! y = ' int2str(-y)]);
@@ -174,7 +182,7 @@ for i = 1:frames
        end
     end
     for y = wall_start_y:y_half % Edited this due to my taskbar being black. Fix in future
-       if downImg(y,1) ~= 255
+       if downImg(y,1) ~= 1
             downWall = 1;
             if mod(i,10) == 0
                 disp(['Down Wall! y = ' int2str(y+510)]);
@@ -199,7 +207,7 @@ for i = 1:frames
     if closeleft == 0 && closeright == 0 && closeup == 0 && closedown == 0
         for y = 1:yMax
             for x = 1:xMax
-                if centerImg(y,x) ~= 255
+                if centerImg(y,x) ~= 1
                     % FOUND PLAYER PIXEL
                     playerFound = true;
                     xRel = x - xMax/2;

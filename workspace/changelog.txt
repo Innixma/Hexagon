@@ -1,3 +1,10 @@
+V0.04 By Nick Erickson
+- Dynamic Resolution
+- Binary Image thresholding
+- Screenselect by Josh Glendenning
+- New Player Detection (detect_player_nick) by Danesh and edited by Nick
+- New Player Detection not implemented yet.
+
 V0.03 By Nick Erickson
 - Far improved screencapture algorithm, much faster processing times.
 - Transitioning to working in arbitrary resolution.
