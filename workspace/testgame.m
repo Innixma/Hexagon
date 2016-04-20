@@ -45,6 +45,11 @@ x_max = 1920;
 y_max = 1020;
 
 %[x_offset,y_offset,x_max,y_max] = screenselect();
+x_offset = 458;
+y_offset = 188;
+x_max = 1020;
+y_max = 764;
+
 
 if mod(x_max,2) ~= 0
     x_max = x_max - 1;   
@@ -54,22 +59,23 @@ if mod(y_max,2) ~= 0
 end
 
 
-frames = 12000; % How long code runs
+frames = 60000; % How long code runs
 image_threshold = 0.5; % From 1 to 0, threshold is more strict with higher number
 
 % Lower value = More picky with its position, more prone to error
-centering_threshold = 40; % Angle away from the center of a safe side that the AI is content with being.
+centering_threshold = 25; % Angle away from the center of a safe side that the AI is content with being.
 
 %center_areafix_x = round(x_max/10)-55; % Change these two variables to accurately include center box and player for player detection
-center_areafix_x = round(x_max/10)-30;
+%center_areafix_x = round(x_max/10)-30;
+center_areafix_x = round(x_max/10)-14;
 center_areafix_y = round(y_max/10)+6;
 
 % These params don't matter for Danesh, make them = 1
 center_boxfix_x = round(center_areafix_x/1.25); % Change these two variables to accurately remove center box from player detection
 center_boxfix_y = round(center_areafix_y/1.25); % Too large of values will also remove the player, so be careful
 
-wall_start_x = center_areafix_x + 10; % Increase if wall finder is detecting the player as a wall
-wall_start_y = center_areafix_y + 10;
+wall_start_x = center_boxfix_x + 10; % Increase if wall finder is detecting the player as a wall
+wall_start_y = center_boxfix_y + 10;
 
 
 
@@ -121,27 +127,44 @@ for i = 1:frames
     %centerImg(centerImg_center(1)-54:centerImg_center(1)+58,centerImg_center(2)-78:centerImg_center(2)+80) = 1;
     %centerImg(centerImg_center(1)-center_boxfix_y:centerImg_center(1)+center_boxfix_y,centerImg_center(2)-center_boxfix_x:centerImg_center(2)+center_boxfix_x) = 1;
     
-    tic
-    detect_player_nick(centerImg);
-    toc
+    
     
     %imshow(capture_img);
     %imshow(centerImg);
-    break;
+    %break;
 
-    if closeleft > 0
-        closeleft = closeleft - 1;
-    end
-    if closeright > 0
-        closeright = closeright - 1;
-    end
-    if closeup > 0
-        closeup = closeup - 1;
-    end
-    if closedown > 0
-        closedown = closedown - 1;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Find Player
+    %tic
+    [player_x, player_y] = detect_player_nick(centerImg);
+    %toc
+    if player_x == -1
+        playerFound = false;
+        disp('Player not found!');
+    else
+        playerFound = true;
     end
     
+    %break;
+    
+    %tic
+    % Remove player from image so it doesn't interfere
+    xRemoveRel = player_x + x_half - round(centerImg_size(2)/2);
+    yRemoveRel = player_y + y_half - round(centerImg_size(1)/2);
+    yRemovePixels = round(centerImg_size(1)/18);
+    xRemovePixels = round(centerImg_size(2)/18);
+    capture_img(yRemoveRel-yRemovePixels:yRemoveRel+yRemovePixels,xRemoveRel-xRemovePixels:xRemoveRel+xRemovePixels) = 1;
+    %toc
+    
+    %imshow(capture_img);
+    %break;
+    
+    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Find Walls
     for x = -x_half+wall_start_x:-1
        if leftImg(1,-x) ~= 1
@@ -150,10 +173,6 @@ for i = 1:frames
                 disp(['Left Wall! x = ' int2str(-x)]);
             end
             
-            if x <= -x_half+wall_start_x % If wall disrupts player detection!
-                %disp('CLOSE LEFT');
-                closeleft = 3;
-            end
             break;
        end
     end
@@ -162,10 +181,6 @@ for i = 1:frames
             rightWall = 1; 
             if mod(i,10) == 0
                 disp(['Right Wall! x = ' int2str(x+x_half)]);
-            end
-            if x <= wall_start_x % If wall disrupts player detection!
-                %disp('CLOSE RIGHT');
-                closeright = 3;
             end
             break;
        end
@@ -176,10 +191,6 @@ for i = 1:frames
             if mod(i,10) == 0
                 disp(['Up Wall! y = ' int2str(-y)]);
             end
-            if y <= -y_half+wall_start_y % If wall disrupts player detection!
-                %disp('CLOSE UP');
-                closeup = 3;
-            end
             break;
        end
     end
@@ -189,44 +200,18 @@ for i = 1:frames
             if mod(i,10) == 0
                 disp(['Down Wall! y = ' int2str(y+510)]);
             end
-            if y <= wall_start_y % If wall disrupts player detection!
-                %disp('CLOSE DOWN');
-                closedown = 3;
-            end
             break;
        end
     end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    % Find Player
-    %tic
-    xMax = length(centerImg(1,:));
-    yMax = length(centerImg(:,1));
-    
-    % Walls can enter players area, so need to consider them
-    pixelCount = 0;
-    playerFound = false;
-    playerCoords = [0 0];
-    if closeleft == 0 && closeright == 0 && closeup == 0 && closedown == 0
-        for y = 1:yMax
-            for x = 1:xMax
-                if centerImg(y,x) ~= 1
-                    % FOUND PLAYER PIXEL
-                    playerFound = true;
-                    xRel = x - xMax/2;
-                    yRel = yMax/2 - y;
-                    pixelCount = pixelCount+1;
-                    playerCoords = playerCoords + [xRel yRel];
-                    
-                end
-            end
-        end
-    end
-    %toc
-    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Calculate Player Angle
     if playerFound == true
-        xRel = playerCoords(1)/pixelCount;
-        yRel = playerCoords(2)/pixelCount;
+        xRel = player_x - round(centerImg_size(2)/2);
+        yRel = -player_y + round(centerImg_size(1)/2);
+        %xRel = playerCoords(1)/pixelCount;
+        %yRel = playerCoords(2)/pixelCount;
 
         player_angle = 180 / pi * atan(yRel/xRel);
         if xRel < 0 && yRel < 0
@@ -240,7 +225,9 @@ for i = 1:frames
             disp(['PLAYER AT Theta = ' num2str(player_angle)]);
         end
     end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Act on information
     wallAngles = [45 135 225 315];
     idealAngles = [0 90 180 270];
@@ -263,7 +250,7 @@ for i = 1:frames
     dangerZones = [rightWall upWall leftWall downWall];
     
     if dangerZones(playerWallPosition) == 1 % Wall incoming
-        disp('DANGER');
+        %disp('DANGER');
         if dangerZones(mod(playerWallPosition,4)+1) == 0 % Left neighbor
             movingLeft = 1;
             if movingRight == 1
@@ -289,7 +276,9 @@ for i = 1:frames
             movingRight = 0;
         end
     end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Fix angle if safe
     if dangerZones(playerWallPosition) == 0 && playerFound == true % Safe
        % Reposition to the center
@@ -324,6 +313,8 @@ for i = 1:frames
        end
        
     end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
     
     %toc;
 end

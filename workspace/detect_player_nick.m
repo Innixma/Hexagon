@@ -9,9 +9,11 @@ function [playerX, playerY] = detect_player_nick(Img)
 % Heavily modified by Nick
 
 ratio1 = 0.86;
-ratio2 = 0.09;
-upperThreshold = 0.625;
-lowerThreshold = 0.566;
+ratio2 = 0.13;
+%upperThreshold = 0.625;
+%lowerThreshold = 0.546;
+upperThreshold = 0.84;
+lowerThreshold = 0.76;
 
 %tic
 xmax = size(Img, 2);
@@ -60,9 +62,7 @@ cy = round(cy);
 %{
 imshow(Img)
 hold on
-%plot(size(Img, 2)/2, size(Img, 1)/2, 'g+', 'markersize', 30)
 plot(square_center(1), square_center(2), 'rX', 'markersize', 30)
-%legend('g+ = screenshot center', 'rX = rotation center')
 plot(cx, cy, '-gx')
 %}
 
@@ -81,7 +81,7 @@ for h = 1:length(cx)
     counter(h) = sum(sum(subImg))/pixelGroupSize;
     
 end
-disp(find(counter <= upperThreshold & counter >= lowerThreshold));
+%disp(find(counter <= upperThreshold & counter >= lowerThreshold));
 
 candidates = find(counter <= upperThreshold & counter >= lowerThreshold);
 
@@ -125,16 +125,25 @@ if cLen > 1 % Find longest run
                        
     if candidates(1) == 1 && candidates(cLen) == j+1
        % LOOP!
+       loop = true;
        runSize = runSize + runSizeFirst;
        runIndex = 1;
        if runSizeMax < runSize
             runSizeMax = runSize;
             runIndexMax = runIndex;
-       end       
+       end
+       
+    else
+        loop = false;
+       
     end
     
     % Not perfect for looping
-    candID = runIndexMax + floor(runSizeMax/2);
+    if loop == true
+        candID = runIndexMax;
+    else
+        candID = runIndexMax + floor(runSizeMax/2);
+    end
     playercenterind = candidates(candID);
     
 else
