@@ -44,7 +44,7 @@ y_offset = 20;
 x_max = 1920;
 y_max = 1020;
 
-[x_offset,y_offset,x_max,y_max] = screenselect();
+%[x_offset,y_offset,x_max,y_max] = screenselect();
 
 if mod(x_max,2) ~= 0
     x_max = x_max - 1;   
@@ -61,8 +61,8 @@ image_threshold = 0.5; % From 1 to 0, threshold is more strict with higher numbe
 centering_threshold = 40; % Angle away from the center of a safe side that the AI is content with being.
 
 %center_areafix_x = round(x_max/10)-55; % Change these two variables to accurately include center box and player for player detection
-center_areafix_x = round(x_max/10)-3;
-center_areafix_y = round(y_max/10)-3;
+center_areafix_x = round(x_max/10)-30;
+center_areafix_y = round(y_max/10)+6;
 
 % These params don't matter for Danesh, make them = 1
 center_boxfix_x = round(center_areafix_x/1.25); % Change these two variables to accurately remove center box from player detection
@@ -119,9 +119,11 @@ for i = 1:frames
     centerImg_center = floor(centerImg_size/2);
     
     %centerImg(centerImg_center(1)-54:centerImg_center(1)+58,centerImg_center(2)-78:centerImg_center(2)+80) = 1;
-    centerImg(centerImg_center(1)-center_boxfix_y:centerImg_center(1)+center_boxfix_y,centerImg_center(2)-center_boxfix_x:centerImg_center(2)+center_boxfix_x) = 1;
+    %centerImg(centerImg_center(1)-center_boxfix_y:centerImg_center(1)+center_boxfix_y,centerImg_center(2)-center_boxfix_x:centerImg_center(2)+center_boxfix_x) = 1;
     
+    tic
     detect_player_nick(centerImg);
+    toc
     
     %imshow(capture_img);
     %imshow(centerImg);
