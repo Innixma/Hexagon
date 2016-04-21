@@ -8,12 +8,12 @@ function [playerX, playerY] = detect_player_nick(Img)
 % Original by Danesh
 % Heavily modified by Nick
 
-ratio1 = 0.86;
-ratio2 = 0.13;
+ratio1 = 0.83;
+ratio2 = 0.16;
 %upperThreshold = 0.625;
 %lowerThreshold = 0.546;
-upperThreshold = 0.84;
-lowerThreshold = 0.76;
+upperThreshold = 0.90;
+lowerThreshold = 0.855;
 
 %tic
 xmax = size(Img, 2);

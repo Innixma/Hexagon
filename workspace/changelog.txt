@@ -2,6 +2,7 @@ V0.05 By Nick Erickson
 - New Player Detection Implemented, fully reworked.
 - Old Player Detection fully removed.
 - Some issues with New Player Detection, will fix.
+- 310 seconds survived on "Base" level.
 
 V0.04 By Nick Erickson
 - Dynamic Resolution
