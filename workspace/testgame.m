@@ -198,7 +198,6 @@ for i = 1:frames
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     wallDistance = zeros(1, numSides);
     wallDistance = wallDistance - 1;
-    %wallDistance = [x_half-wall_start_x y_half-wall_start_y x_half-wall_start_x y_half-wall_start_y];
     for wall = 1:numSides
         idealAngle = idealAngles(wall);
         startRadius = centerSize + 23;
@@ -223,51 +222,6 @@ for i = 1:frames
         
         
     end
-    
-    
-    %{
-    % Find Walls
-    for x = wall_start_x:x_half
-       if rightImg(1,x) ~= 1
-            wallDistance(1) = x - wall_start_x;
-            %if mod(i,10) == 0
-                %disp(['Right Wall! x = ' int2str(wallDistance(1))]);
-            %end
-            
-            break;
-       end
-    end
-    for y = -y_half+wall_start_y:-1
-       if upImg(-y,1) ~= 1
-            wallDistance(2) = y_half + y - wall_start_y;
-            %if mod(i,10) == 0
-                %disp(['Up Wall! y = ' int2str(wallDistance(2))]);
-            %end
-            
-            break;
-       end
-    end
-    for x = -x_half+wall_start_x:-1
-       if leftImg(1,-x) ~= 1
-            wallDistance(3) = x_half + x - wall_start_x;
-            %if mod(i,10) == 0
-                %disp(['Left Wall! x = ' int2str(wallDistance(3))]);
-            %end
-            
-            break;
-       end
-    end 
-    for y = wall_start_y:y_half % Edited this due to my taskbar being black. Fix in future
-       if downImg(y,1) ~= 1
-            wallDistance(4) = y - wall_start_y;
-            %if mod(i,10) == 0
-                %disp(['Down Wall! y = ' int2str(wallDistance(4))]);
-            %end
-            
-            break;
-       end
-    end
-    %}
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     % Wall velocity = negative if no wall now
