@@ -1,3 +1,8 @@
+V0.06 By Nick Erickson
+- New Player Detection Fixed, works well
+- Still a few issues at extreme cases, will fix.
+- 950 seconds survived on "Base" level. (Impossible for a human)
+
 V0.05 By Nick Erickson
 - New Player Detection Implemented, fully reworked.
 - Old Player Detection fully removed.

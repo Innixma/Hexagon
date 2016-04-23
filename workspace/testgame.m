@@ -60,10 +60,19 @@ end
 
 
 frames = 60000; % How long code runs
+framerate = 40; % Approximate amount of frames processed per second
+numsides = 4;
 image_threshold = 0.5; % From 1 to 0, threshold is more strict with higher number
+
 
 % Lower value = More picky with its position, more prone to error
 centering_threshold = 25; % Angle away from the center of a safe side that the AI is content with being.
+
+% seconds to go 360 degrees:
+rotationSpeed = 0.62;
+
+% Lower value = More risky in its movements
+player_closeness_threshold = 50;
 
 %center_areafix_x = round(x_max/10)-55; % Change these two variables to accurately include center box and player for player detection
 %center_areafix_x = round(x_max/10)-30;
@@ -74,8 +83,8 @@ center_areafix_y = round(y_max/10)+6;
 center_boxfix_x = round(center_areafix_x/1.25); % Change these two variables to accurately remove center box from player detection
 center_boxfix_y = round(center_areafix_y/1.25); % Too large of values will also remove the player, so be careful
 
-wall_start_x = center_boxfix_x + 10; % Increase if wall finder is detecting the player as a wall
-wall_start_y = center_boxfix_y + 10;
+wall_start_x = center_boxfix_x + 15; % Increase if wall finder is detecting the player as a wall
+wall_start_y = center_boxfix_y + 15;
 
 
 
@@ -83,13 +92,12 @@ wall_start_y = center_boxfix_y + 10;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialization Variables
-closeleft = 0;
-closeright = 0;
-closeup = 0;
-closedown = 0;
+lockFrames = 0;
+setLockFrames = 0;
 movingLeft = 0;
 movingRight = 0;
-player_angle = 0;
+playerAngle = 0;
+wallDistancePrevious = [0 0 0 0];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -101,12 +109,22 @@ y_center = y_half;
 
 for i = 1:frames
     %tic;
+    if mod(i,100) == 1
+        tic;
+    elseif mod(i,100) == 0
+        timeElapsed = toc;
+        framerate = round(100 / timeElapsed);
+        disp(['Framerate = ' int2str(framerate)]);
+    end
     playerWallPosition = 0;
     leftWall = 0;
     rightWall = 0; 
     upWall = 0;
     downWall = 0;
     
+    if lockFrames ~= 0
+        lockFrames = lockFrames - 1;
+    end
     %tic;
     capture_img = screencapture(x_offset, y_offset, x_max, y_max);
     % make it binary
@@ -165,65 +183,80 @@ for i = 1:frames
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    wallDistance = [x_half-wall_start_x y_half-wall_start_y x_half-wall_start_x y_half-wall_start_y];
+    
     % Find Walls
-    for x = -x_half+wall_start_x:-1
-       if leftImg(1,-x) ~= 1
-            leftWall = 1;
-            if mod(i,10) == 0
-                disp(['Left Wall! x = ' int2str(-x)]);
-            end
-            
-            break;
-       end
-    end
     for x = wall_start_x:x_half
        if rightImg(1,x) ~= 1
-            rightWall = 1; 
-            if mod(i,10) == 0
-                disp(['Right Wall! x = ' int2str(x+x_half)]);
-            end
+            rightWall = 1;
+            wallDistance(1) = x - wall_start_x;
+            %if mod(i,10) == 0
+                %disp(['Right Wall! x = ' int2str(wallDistance(1))]);
+            %end
+            
             break;
        end
     end
     for y = -y_half+wall_start_y:-1
        if upImg(-y,1) ~= 1
             upWall = 1;
-            if mod(i,10) == 0
-                disp(['Up Wall! y = ' int2str(-y)]);
-            end
+            wallDistance(2) = y_half + y - wall_start_y;
+            %if mod(i,10) == 0
+                %disp(['Up Wall! y = ' int2str(wallDistance(2))]);
+            %end
+            
             break;
        end
     end
+    for x = -x_half+wall_start_x:-1
+       if leftImg(1,-x) ~= 1
+            leftWall = 1;
+            wallDistance(3) = x_half + x - wall_start_x;
+            %if mod(i,10) == 0
+                %disp(['Left Wall! x = ' int2str(wallDistance(3))]);
+            %end
+            
+            break;
+       end
+    end 
     for y = wall_start_y:y_half % Edited this due to my taskbar being black. Fix in future
        if downImg(y,1) ~= 1
             downWall = 1;
-            if mod(i,10) == 0
-                disp(['Down Wall! y = ' int2str(y+510)]);
-            end
+            wallDistance(4) = y - wall_start_y;
+            %if mod(i,10) == 0
+                %disp(['Down Wall! y = ' int2str(wallDistance(4))]);
+            %end
+            
             break;
        end
     end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    % Wall velocity = negative if no wall now
+    wallVelocity = wallDistancePrevious - wallDistance;
+    wallVelocity(wallVelocity<0) = 0; % No negatives
+    
+    wallDistancePrevious = wallDistance;
+    
+    %disp(wallVelocity);
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Calculate Player Angle
     if playerFound == true
         xRel = player_x - round(centerImg_size(2)/2);
         yRel = -player_y + round(centerImg_size(1)/2);
-        %xRel = playerCoords(1)/pixelCount;
-        %yRel = playerCoords(2)/pixelCount;
 
-        player_angle = 180 / pi * atan(yRel/xRel);
+        playerAngle = 180 / pi * atan(yRel/xRel);
         if xRel < 0 && yRel < 0
-            player_angle = player_angle + 180;
+            playerAngle = playerAngle + 180;
         elseif xRel < 0 && yRel >= 0
-            player_angle = 180 + player_angle;
+            playerAngle = 180 + playerAngle;
         elseif xRel >= 0 && yRel < 0
-            player_angle = 360 + player_angle;
+            playerAngle = 360 + playerAngle;
         end
-        if mod(i,10) == 0
-            disp(['PLAYER AT Theta = ' num2str(player_angle)]);
-        end
+        %if mod(i,10) == 0
+            %disp(['PLAYER AT Theta = ' num2str(playerAngle)]);
+        %end
     end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
@@ -231,91 +264,244 @@ for i = 1:frames
     % Act on information
     wallAngles = [45 135 225 315];
     idealAngles = [0 90 180 270];
+
+    %tic;
     for j = 1:size(wallAngles,2)
-       if wallAngles(j) > player_angle
+       if wallAngles(j) > playerAngle
           playerWallPosition = j;
           break; 
        end
     end
     if playerWallPosition == 0
-       %playerWallPosition = size(wallAngles);
        playerWallPosition = 1;
     end
-    
-    
-    
-    
-    %playerWallPosition = floor(mod(angle+44.9,360)/90)+1;
-    %disp(playerWallPosition);
-    dangerZones = [rightWall upWall leftWall downWall];
-    
-    if dangerZones(playerWallPosition) == 1 % Wall incoming
-        %disp('DANGER');
-        if dangerZones(mod(playerWallPosition,4)+1) == 0 % Left neighbor
-            movingLeft = 1;
-            if movingRight == 1
-                keyaction('right','release');
-                movingRight = 0;
-            end
-            keyaction('left','press');
-        else
-            movingRight = 1;
-            if movingLeft == 1
-                keyaction('left', 'release');
-                movingLeft = 0;
-            end
-            keyaction('right','press');
-        end
+
+    movingChoice = 0; % 0 = No move, 1 = left, 2 = right
+    % Approx 0.15 seconds to move 90 degrees
+    [bestMoveDistance, bestMoveLocation] = max(wallDistance);
+
+    if bestMoveLocation == playerWallPosition
+        % Don't move
+        movingChoice = 0;
+        %disp('No move');
     else
-        if movingLeft == 1
-            keyaction('left','release');
-            movingLeft = 0;
+
+        rightMove = mod(playerWallPosition-1,numSides);
+        if rightMove == 0
+            rightMove = numSides;
         end
-        if movingRight == 1
-            keyaction('right','release');
-            movingRight = 0;
+        rightMoveAngle = wallAngles(rightMove);
+        leftMoveAngle = wallAngles(playerWallPosition);
+        curWallDistance = wallDistance(playerWallPosition);
+        rightMoveDist = abs(playerAngle - rightMoveAngle);
+        if rightMoveDist > 180
+            rightMoveDist = 360 - rightMoveDist;
+        end
+        leftMoveDist = abs(playerAngle - leftMoveAngle);
+        if leftMoveDist > 180
+            leftMoveDist = 360 - leftMoveDist;
+        end
+
+        % In seconds
+        costPerDegree = framerate * wallVelocity * rotationSpeed / 360;
+        costPerSide = costPerDegree * 360 / numSides;
+
+        rightMoveCost = rightMoveDist * costPerDegree(playerWallPosition);
+        leftMoveCost = leftMoveDist * costPerDegree(playerWallPosition);
+
+        leftClose = 0;
+        rightClose = 0;
+
+        %disp([leftMoveCost rightMoveCost]);
+        if wallDistance(playerWallPosition) - leftMoveCost < player_closeness_threshold
+            leftClose = 1;
+        end
+        if wallDistance(playerWallPosition) - rightMoveCost < player_closeness_threshold
+            rightClose = 1;
+        end
+
+        if leftClose == 1 && rightClose == 1 % Worst case scenario: Imminent death
+            %disp('Imminent Defeat');
+            % Panic move: Must act fast
+            if leftMoveCost <= rightMoveCost
+                % Move Left
+                movingChoice = 1;
+                setLockFrames = 3;
+                disp('Super Panic Move Left');
+            else
+                % Move Right
+                movingChoice = 2;
+                setLockFrames = 3;
+                disp('Super Panic Move Right');
+            end
+        elseif leftClose == 1
+            % Move Right
+            movingChoice = 2;
+            setLockFrames = 3;
+            disp('Panic Move Right');
+        elseif rightClose == 1
+            % Move Left
+            movingChoice = 1;
+            setLockFrames = 3;
+            disp('Panic Move Left');
+        else % Currently safe, can now figure out best move timely    
+
+
+            leftMovesCost = zeros(1, numSides);
+            rightMovesCost = zeros(1, numSides);
+
+
+            temp = circshift(wallDistance', [1-playerWallPosition, 0]);
+            leftMovesDist = temp';
+            temp = circshift(wallDistance', [numSides-playerWallPosition, 0]);
+            rightMovesDist = temp';
+            rightMovesDist = fliplr(rightMovesDist);
+            rightMovesDist = rightMovesDist - 1; % PENALIZE TO AVOID EQUALS
+
+            leftCost = circshift(costPerSide', [1-playerWallPosition, 0]);
+            leftCost = leftCost';
+            rightCost = circshift(costPerSide', [numSides-playerWallPosition, 0]);
+            rightCost = rightCost';
+            rightCost = fliplr(rightCost);
+
+            for side = 2:numSides
+               leftMovesCost(side) = leftMovesCost(side-1) + leftCost(side); % Cost to get to end of side
+               rightMovesCost(side) = rightMovesCost(side-1) + rightCost(side);  
+            end
+            leftMovesCost = leftMovesCost + leftMoveCost; % Cost to get to start of side
+            rightMovesCost = rightMovesCost + rightMoveCost; % Cost to get to start of side
+            leftMovesCost(1) = 0; % Where player is, 0 cost cause they are already there
+            rightMovesCost(1) = 0; % Where player is, 0 cost cause they are already there
+
+            leftMovesNet = leftMovesDist - leftMovesCost;
+            rightMovesNet = rightMovesDist - rightMovesCost;
+
+            maxLeftDist = -1;
+            maxLeftSide = -1;
+            for side = 2:numSides
+               curDist = leftMovesDist(side);
+               curSide = side;
+               if leftMovesNet(side) < player_closeness_threshold % == too risky
+                    break;
+               elseif maxLeftDist < curDist
+                    maxLeftDist = curDist;
+                    maxLeftSide = curSide;
+               end
+            end
+
+            maxRightDist = -1;
+            maxRightSide = -1;
+            for side = 2:numSides
+               curDist = rightMovesDist(side);
+               curSide = side;
+               if rightMovesNet(side) < player_closeness_threshold % == too risky
+                    break;
+               elseif maxRightDist < curDist
+                    maxRightDist = curDist;
+                    maxRightSide = curSide;
+               end
+            end
+
+            if maxLeftDist > maxRightDist
+               % Move Left
+               movingChoice = 1;
+               %disp('Move Left');
+            elseif maxRightDist > maxLeftDist
+               % Move Right
+               movingChoice = 2;
+               %disp('Move Right');
+            else % If they are equal
+                if leftMoveDist == -1 % Both can't move to new locations
+                    % Don't Move
+                    movingChoice = 0;
+                    %disp('No Move');
+                elseif maxLeftSide < maxRightSide % If can get there sooner on left side
+                    % Move Left
+                    movingChoice = 1;
+                    %disp('Move Left');
+                elseif maxRightSide < maxLeftSide % If can get there sooner on right side    
+                    % Move Right
+                    movingChoice = 2;
+                    %disp('Move Right');
+                elseif leftMoveCost <= rightMoveCost % Else equal, thus find even smaller differences
+                    % Move Left
+                    movingChoice = 1;
+                    %disp('Move Left');
+                else 
+                    % Move Right
+                    %movingChoice = 2;
+                    %disp('Move Right');
+                    %%%%%%%%%%%
+                    % HACK: Move Left anyways when safe,
+                    % Avoids pinging back and forth
+                    movingChoice = 1;
+                    disp('Move Left');
+                    %%%%%%%%%%%
+                end
+            end
         end
     end
+    %toc;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Fix angle if safe
-    if dangerZones(playerWallPosition) == 0 && playerFound == true % Safe
-       % Reposition to the center
-       idealAngle = idealAngles(playerWallPosition);
-       temp_player_angle = player_angle;
-       if temp_player_angle > wallAngles(size(wallAngles,2)) % Fix circular angle
-           temp_player_angle = temp_player_angle - 360;
-       end
-       if idealAngle - temp_player_angle > centering_threshold % Move player left
+    
+    if lockFrames == 0
+        if movingChoice == 1 % Left
             movingLeft = 1;
             if movingRight == 1
                 keyaction('right', 'release');
                 movingRight = 0;
             end
             keyaction('left', 'press');
-       elseif idealAngle - temp_player_angle < -centering_threshold % Move player right
+        elseif movingChoice == 2 % Right
             movingRight = 1;
             if movingLeft == 1
                 keyaction('left', 'release');
                 movingLeft = 0;
             end
-            keyaction('right', 'press');
-       else
-            if movingLeft == 1
-                keyaction('left', 'release');
-                movingLeft = 0;
-            end
-            if movingRight == 1
-                keyaction('right', 'release');
-                movingRight = 0;
-            end    
-       end
-       
+            keyaction('right', 'press'); 
+        % Fix angle if safe
+        elseif movingChoice == 0 && playerFound == true % Safe
+           % Reposition to the center
+           idealAngle = idealAngles(playerWallPosition);
+           temp_player_angle = playerAngle;
+           if temp_player_angle > wallAngles(size(wallAngles,2)) % Fix circular angle
+               temp_player_angle = temp_player_angle - 360;
+           end
+           if idealAngle - temp_player_angle > centering_threshold % Move player left
+                movingLeft = 1;
+                if movingRight == 1
+                    keyaction('right', 'release');
+                    movingRight = 0;
+                end
+                keyaction('left', 'press');
+           elseif idealAngle - temp_player_angle < -centering_threshold % Move player right
+                movingRight = 1;
+                if movingLeft == 1
+                    keyaction('left', 'release');
+                    movingLeft = 0;
+                end
+                keyaction('right', 'press');
+           else
+                if movingLeft == 1
+                    keyaction('left', 'release');
+                    movingLeft = 0;
+                end
+                if movingRight == 1
+                    keyaction('right', 'release');
+                    movingRight = 0;
+                end    
+           end
+
+        end
     end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    
+    if setLockFrames ~= 0;
+        lockFrames = setLockFrames+1;
+        setLockFrames = 0;
+    end
     %toc;
 end
 
