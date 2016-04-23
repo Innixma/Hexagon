@@ -72,7 +72,7 @@ centering_threshold = 25; % Angle away from the center of a safe side that the A
 rotationSpeed = 0.62;
 
 % Lower value = More risky in its movements
-player_closeness_threshold = 50;
+player_closeness_threshold = 55;
 
 %center_areafix_x = round(x_max/10)-55; % Change these two variables to accurately include center box and player for player detection
 %center_areafix_x = round(x_max/10)-30;
@@ -97,7 +97,8 @@ setLockFrames = 0;
 movingLeft = 0;
 movingRight = 0;
 playerAngle = 0;
-wallDistancePrevious = [0 0 0 0];
+wallDistancePrevious = zeros(1, numSides);
+numSidesPrevious = numSides;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -129,10 +130,10 @@ for i = 1:frames
     
     %capture_img = imcomplement(capture_img);
     
-    leftImg = capture_img(y_center, 1:x_center);
-    rightImg = capture_img(y_center, x_center+1:x_max);
-    upImg = capture_img(1:y_center, x_center);
-    downImg = capture_img(y_center+1:y_max, x_center);
+    %leftImg = capture_img(y_center, 1:x_center);
+    %rightImg = capture_img(y_center, x_center+1:x_max);
+    %upImg = capture_img(1:y_center, x_center);
+    %downImg = capture_img(y_center+1:y_max, x_center);
     %centerImg = capture_img(y_center-y_max/10+3:y_center+y_max/10-3,x_center-y_max/10-35:x_center+y_max/10+35);
     centerImg = capture_img(y_center-center_areafix_y:y_center+center_areafix_y,x_center-center_areafix_x:x_center+center_areafix_x);
     centerImg_size = size(centerImg);
@@ -148,7 +149,7 @@ for i = 1:frames
     %break;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Find Walls
+    % Find Center
     
     [centerSize, numSides, wallAngles] = centerboxFinal(centerImg);
     
@@ -195,8 +196,36 @@ for i = 1:frames
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    wallDistance = [x_half-wall_start_x y_half-wall_start_y x_half-wall_start_x y_half-wall_start_y];
+    wallDistance = zeros(1, numSides);
+    wallDistance = wallDistance - 1;
+    %wallDistance = [x_half-wall_start_x y_half-wall_start_y x_half-wall_start_x y_half-wall_start_y];
+    for wall = 1:numSides
+        idealAngle = idealAngles(wall);
+        startRadius = centerSize + 23;
+        if abs(cosd(idealAngle))/x_half > abs(sind(idealAngle))/y_half % Max x will reach first
+            max_radius = floor(abs(x_half/cosd(idealAngle))); 
+        else
+            max_radius = floor(abs(y_half/sind(idealAngle)));
+        end
+        
+        for r = startRadius:max_radius-3
+            xVal = floor(r * cosd(idealAngle)) + x_half;
+            yVal = -floor(r * sind(idealAngle)) + y_half;
+            if capture_img(yVal, xVal) == 0
+                wallDistance(wall) = r-startRadius;
+                break;
+            end
+            
+        end
+        if wallDistance(wall) == -1
+            wallDistance(wall) = max_radius-startRadius-2;
+        end
+        
+        
+    end
     
+    
+    %{
     % Find Walls
     for x = wall_start_x:x_half
        if rightImg(1,x) ~= 1
@@ -238,12 +267,20 @@ for i = 1:frames
             break;
        end
     end
+    %}
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     % Wall velocity = negative if no wall now
-    wallVelocity = wallDistancePrevious - wallDistance;
-    wallVelocity(wallVelocity<0) = 0; % No negatives
     
+    if numSides == numSidesPrevious
+        wallVelocity = wallDistancePrevious - wallDistance;
+        wallVelocity(wallVelocity<0) = 0; % No negatives
+    else % numSides changed! Must recalibrate
+        wallVelocity = zeros(1, numSides);
+        disp(['numSides changed to ' int2str(numSides)]);
+    end
+    
+    numSidesPrevious = numSides;
     wallDistancePrevious = wallDistance;
     
     %disp(wallVelocity);
