@@ -61,7 +61,7 @@ end
 
 frames = 60000; % How long code runs
 framerate = 40; % Approximate amount of frames processed per second
-numsides = 4;
+numSides = 4;
 image_threshold = 0.5; % From 1 to 0, threshold is more strict with higher number
 
 
@@ -170,8 +170,8 @@ for i = 1:frames
     % Remove player from image so it doesn't interfere
     xRemoveRel = player_x + x_half - round(centerImg_size(2)/2);
     yRemoveRel = player_y + y_half - round(centerImg_size(1)/2);
-    yRemovePixels = round(centerImg_size(1)/18);
-    xRemovePixels = round(centerImg_size(2)/18);
+    yRemovePixels = round(centerImg_size(1)/16);
+    xRemovePixels = round(centerImg_size(2)/16);
     capture_img(yRemoveRel-yRemovePixels:yRemoveRel+yRemovePixels,xRemoveRel-xRemovePixels:xRemoveRel+xRemovePixels) = 1;
     %toc
     
@@ -320,123 +320,125 @@ for i = 1:frames
             rightClose = 1;
         end
 
-        if leftClose == 1 && rightClose == 1 % Worst case scenario: Imminent death
-            %disp('Imminent Defeat');
-            % Panic move: Must act fast
-            if leftMoveCost <= rightMoveCost
-                % Move Left
-                movingChoice = 1;
-                setLockFrames = 3;
-                disp('Super Panic Move Left');
-            else
-                % Move Right
-                movingChoice = 2;
-                setLockFrames = 3;
-                disp('Super Panic Move Right');
-            end
-        elseif leftClose == 1
-            % Move Right
-            movingChoice = 2;
-            setLockFrames = 3;
-            disp('Panic Move Right');
-        elseif rightClose == 1
-            % Move Left
-            movingChoice = 1;
-            setLockFrames = 3;
-            disp('Panic Move Left');
-        else % Currently safe, can now figure out best move timely    
-
-
-            leftMovesCost = zeros(1, numSides);
-            rightMovesCost = zeros(1, numSides);
-
-
-            temp = circshift(wallDistance', [1-playerWallPosition, 0]);
-            leftMovesDist = temp';
-            temp = circshift(wallDistance', [numSides-playerWallPosition, 0]);
-            rightMovesDist = temp';
-            rightMovesDist = fliplr(rightMovesDist);
-            rightMovesDist = rightMovesDist - 1; % PENALIZE TO AVOID EQUALS
-
-            leftCost = circshift(costPerSide', [1-playerWallPosition, 0]);
-            leftCost = leftCost';
-            rightCost = circshift(costPerSide', [numSides-playerWallPosition, 0]);
-            rightCost = rightCost';
-            rightCost = fliplr(rightCost);
-
-            for side = 2:numSides
-               leftMovesCost(side) = leftMovesCost(side-1) + leftCost(side); % Cost to get to end of side
-               rightMovesCost(side) = rightMovesCost(side-1) + rightCost(side);  
-            end
-            leftMovesCost = leftMovesCost + leftMoveCost; % Cost to get to start of side
-            rightMovesCost = rightMovesCost + rightMoveCost; % Cost to get to start of side
-            leftMovesCost(1) = 0; % Where player is, 0 cost cause they are already there
-            rightMovesCost(1) = 0; % Where player is, 0 cost cause they are already there
-
-            leftMovesNet = leftMovesDist - leftMovesCost;
-            rightMovesNet = rightMovesDist - rightMovesCost;
-
-            maxLeftDist = -1;
-            maxLeftSide = -1;
-            for side = 2:numSides
-               curDist = leftMovesDist(side);
-               curSide = side;
-               if leftMovesNet(side) < player_closeness_threshold % == too risky
-                    break;
-               elseif maxLeftDist < curDist
-                    maxLeftDist = curDist;
-                    maxLeftSide = curSide;
-               end
-            end
-
-            maxRightDist = -1;
-            maxRightSide = -1;
-            for side = 2:numSides
-               curDist = rightMovesDist(side);
-               curSide = side;
-               if rightMovesNet(side) < player_closeness_threshold % == too risky
-                    break;
-               elseif maxRightDist < curDist
-                    maxRightDist = curDist;
-                    maxRightSide = curSide;
-               end
-            end
-
-            if maxLeftDist > maxRightDist
-               % Move Left
-               movingChoice = 1;
-               %disp('Move Left');
-            elseif maxRightDist > maxLeftDist
-               % Move Right
-               movingChoice = 2;
-               %disp('Move Right');
-            else % If they are equal
-                if leftMoveDist == -1 % Both can't move to new locations
-                    % Don't Move
-                    movingChoice = 0;
-                    %disp('No Move');
-                elseif maxLeftSide < maxRightSide % If can get there sooner on left side
+        if lockFrames == 0
+            if leftClose == 1 && rightClose == 1 % Worst case scenario: Imminent death
+                %disp('Imminent Defeat');
+                % Panic move: Must act fast
+                if leftMoveCost <= rightMoveCost
                     % Move Left
                     movingChoice = 1;
-                    %disp('Move Left');
-                elseif maxRightSide < maxLeftSide % If can get there sooner on right side    
+                    setLockFrames = 2;
+                    disp('Super Panic Move Left');
+                else
                     % Move Right
                     movingChoice = 2;
-                    %disp('Move Right');
-                elseif leftMoveCost <= rightMoveCost % Else equal, thus find even smaller differences
-                    % Move Left
-                    movingChoice = 1;
-                    %disp('Move Left');
-                else 
-                    % Move Right
-                    %movingChoice = 2;
-                    %disp('Move Right');
-                    %%%%%%%%%%%
-                    % HACK: Move Left anyways when safe,
-                    % Avoids pinging back and forth
-                    movingChoice = 1;
-                    disp('Move Left');
-                    %%%%%%%%%%%
+                    setLockFrames = 2;
+                    disp('Super Panic Move Right');
+                end
+            elseif leftClose == 1
+                % Move Right
+                movingChoice = 2;
+                setLockFrames = 2;
+                disp('Panic Move Right');
+            elseif rightClose == 1
+                % Move Left
+                movingChoice = 1;
+                setLockFrames = 2;
+                disp('Panic Move Left');
+            else % Currently safe, can now figure out best move timely    
+
+
+                leftMovesCost = zeros(1, numSides);
+                rightMovesCost = zeros(1, numSides);
+
+
+                temp = circshift(wallDistance', [1-playerWallPosition, 0]);
+                leftMovesDist = temp';
+                temp = circshift(wallDistance', [numSides-playerWallPosition, 0]);
+                rightMovesDist = temp';
+                rightMovesDist = fliplr(rightMovesDist);
+                rightMovesDist = rightMovesDist - 1; % PENALIZE TO AVOID EQUALS
+
+                leftCost = circshift(costPerSide', [1-playerWallPosition, 0]);
+                leftCost = leftCost';
+                rightCost = circshift(costPerSide', [numSides-playerWallPosition, 0]);
+                rightCost = rightCost';
+                rightCost = fliplr(rightCost);
+
+                for side = 2:numSides
+                   leftMovesCost(side) = leftMovesCost(side-1) + leftCost(side); % Cost to get to end of side
+                   rightMovesCost(side) = rightMovesCost(side-1) + rightCost(side);  
+                end
+                leftMovesCost = leftMovesCost + leftMoveCost; % Cost to get to start of side
+                rightMovesCost = rightMovesCost + rightMoveCost; % Cost to get to start of side
+                leftMovesCost(1) = 0; % Where player is, 0 cost cause they are already there
+                rightMovesCost(1) = 0; % Where player is, 0 cost cause they are already there
+
+                leftMovesNet = leftMovesDist - leftMovesCost;
+                rightMovesNet = rightMovesDist - rightMovesCost;
+
+                maxLeftDist = -1;
+                maxLeftSide = -1;
+                for side = 2:numSides
+                   curDist = leftMovesDist(side);
+                   curSide = side;
+                   if leftMovesNet(side) < player_closeness_threshold % == too risky
+                        break;
+                   elseif maxLeftDist < curDist
+                        maxLeftDist = curDist;
+                        maxLeftSide = curSide;
+                   end
+                end
+
+                maxRightDist = -1;
+                maxRightSide = -1;
+                for side = 2:numSides
+                   curDist = rightMovesDist(side);
+                   curSide = side;
+                   if rightMovesNet(side) < player_closeness_threshold % == too risky
+                        break;
+                   elseif maxRightDist < curDist
+                        maxRightDist = curDist;
+                        maxRightSide = curSide;
+                   end
+                end
+
+                if maxLeftDist > maxRightDist
+                   % Move Left
+                   movingChoice = 1;
+                   %disp('Move Left');
+                elseif maxRightDist > maxLeftDist
+                   % Move Right
+                   movingChoice = 2;
+                   %disp('Move Right');
+                else % If they are equal
+                    if leftMoveDist == -1 % Both can't move to new locations
+                        % Don't Move
+                        movingChoice = 0;
+                        %disp('No Move');
+                    elseif maxLeftSide < maxRightSide % If can get there sooner on left side
+                        % Move Left
+                        movingChoice = 1;
+                        %disp('Move Left');
+                    elseif maxRightSide < maxLeftSide % If can get there sooner on right side    
+                        % Move Right
+                        movingChoice = 2;
+                        %disp('Move Right');
+                    elseif leftMoveCost <= rightMoveCost % Else equal, thus find even smaller differences
+                        % Move Left
+                        movingChoice = 1;
+                        %disp('Move Left');
+                    else 
+                        % Move Right
+                        %movingChoice = 2;
+                        %disp('Move Right');
+                        %%%%%%%%%%%
+                        % HACK: Move Left anyways when safe,
+                        % Avoids pinging back and forth
+                        movingChoice = 1;
+                        disp('Move Left');
+                        %%%%%%%%%%%
+                    end
                 end
             end
         end
