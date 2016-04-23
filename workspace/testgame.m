@@ -117,10 +117,6 @@ for i = 1:frames
         disp(['Framerate = ' int2str(framerate)]);
     end
     playerWallPosition = 0;
-    leftWall = 0;
-    rightWall = 0; 
-    upWall = 0;
-    downWall = 0;
     
     if lockFrames ~= 0
         lockFrames = lockFrames - 1;
@@ -151,6 +147,22 @@ for i = 1:frames
     %imshow(centerImg);
     %break;
 
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Find Walls
+    
+    [centerSize, numSides, wallAngles] = centerboxFinal(centerImg);
+    
+    if numSides < 3
+        disp('Waiting for game to start')
+        continue;
+    end
+    idealAngles = zeros(1,numSides);
+    idealAngles(1) = mod(360 - wallAngles(numSides)-wallAngles(1),360);
+    for j = 2:numSides
+       idealAngles(j) = (wallAngles(j-1) + wallAngles(j)) / 2; 
+    end
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Find Player
@@ -188,7 +200,6 @@ for i = 1:frames
     % Find Walls
     for x = wall_start_x:x_half
        if rightImg(1,x) ~= 1
-            rightWall = 1;
             wallDistance(1) = x - wall_start_x;
             %if mod(i,10) == 0
                 %disp(['Right Wall! x = ' int2str(wallDistance(1))]);
@@ -199,7 +210,6 @@ for i = 1:frames
     end
     for y = -y_half+wall_start_y:-1
        if upImg(-y,1) ~= 1
-            upWall = 1;
             wallDistance(2) = y_half + y - wall_start_y;
             %if mod(i,10) == 0
                 %disp(['Up Wall! y = ' int2str(wallDistance(2))]);
@@ -210,7 +220,6 @@ for i = 1:frames
     end
     for x = -x_half+wall_start_x:-1
        if leftImg(1,-x) ~= 1
-            leftWall = 1;
             wallDistance(3) = x_half + x - wall_start_x;
             %if mod(i,10) == 0
                 %disp(['Left Wall! x = ' int2str(wallDistance(3))]);
@@ -221,7 +230,6 @@ for i = 1:frames
     end 
     for y = wall_start_y:y_half % Edited this due to my taskbar being black. Fix in future
        if downImg(y,1) ~= 1
-            downWall = 1;
             wallDistance(4) = y - wall_start_y;
             %if mod(i,10) == 0
                 %disp(['Down Wall! y = ' int2str(wallDistance(4))]);
@@ -262,8 +270,8 @@ for i = 1:frames
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Act on information
-    wallAngles = [45 135 225 315];
-    idealAngles = [0 90 180 270];
+    %wallAngles = [45 135 225 315];
+    %idealAngles = [0 90 180 270];
 
     %tic;
     for j = 1:size(wallAngles,2)
@@ -468,9 +476,19 @@ for i = 1:frames
            % Reposition to the center
            idealAngle = idealAngles(playerWallPosition);
            temp_player_angle = playerAngle;
+           if abs(idealAngle - temp_player_angle) > 180 % Fix angles
+               if idealAngle > temp_player_angle
+                    idealAngle = idealAngle - 360;
+               else
+                    temp_player_angle = temp_player_angle - 360;
+               end
+           end
+           %disp(idealAngle - temp_player_angle);
+           %{
            if temp_player_angle > wallAngles(size(wallAngles,2)) % Fix circular angle
                temp_player_angle = temp_player_angle - 360;
            end
+           %}
            if idealAngle - temp_player_angle > centering_threshold % Move player left
                 movingLeft = 1;
                 if movingRight == 1

@@ -7,7 +7,7 @@ function [centerSize, numSides, wallAngles] = centerboxFinal(CropImg)
 
     %figure; imshow(CropImg); hold on; plot(centerX, centerY, 'rX', 'markersize', 30);
 
-    radius = 51:100;
+    radius = 25:80;
     lineIntVal = zeros(size(radius));
     theta = 1:360;
     dists = zeros(size(theta));
