@@ -5,46 +5,71 @@ function [playerX, playerY] = detect_player_nick(Img)
 % Version 5 is Version 4 made dimensionless.  The only concern I have is
 % with the detection range
 
-ratio1 = 0.82;
-ratio2 = 0.09;
+% Original by Danesh
+% Heavily modified by Nick
 
-tic
+ratio1 = 0.83;
+ratio2 = 0.16;
+%upperThreshold = 0.625;
+%lowerThreshold = 0.546;
+upperThreshold = 0.90;
+lowerThreshold = 0.855;
+
+%tic
 xmax = size(Img, 2);
 ymax = size(Img, 1);
 square_center = [round(xmax/2), round(ymax/2)];
 
 
-Xsearchoffset = round(ratio1 * square_center(2));
-Ysearchoffset = round(ratio1 * square_center(1));
+
+Xsearchoffset = round(ratio1 * square_center(1));
+Ysearchoffset = round(ratio1 * square_center(2));
 xtop = (square_center(1) - Xsearchoffset); xbottom = (square_center(1) + Xsearchoffset);
 ytop = (square_center(2) - Ysearchoffset); ybottom = (square_center(2) + Ysearchoffset);
-
 
 Xhalfrange = round(ratio2 * Xsearchoffset); % half the Xside of the square patch we search
 Yhalfrange = round(ratio2 * Ysearchoffset); % half the Yside of the square patch we search
 
 pixelGroupSize = (Xhalfrange*2+1) * (Yhalfrange*2+1);
 
-cx = [round(xtop:xbottom)];
-cytop = round(square_center(2) - sqrt(Ysearchoffset^2 - (cx - square_center(1)).^2));
-cybottom = round(square_center(2) + sqrt(Ysearchoffset^2 - (cx - square_center(1)).^2));
+a = (xbottom-xtop)/2;
+b = (ybottom-ytop)/2;
 
-cx = [cx(1) cx cx];   % the cx(1), cybottom(end) closes a gap through which the player could slip undetected more efficiently than decreasing the stepsize would
-cy = [cybottom(end) cytop cybottom];
+% Theta from 0 to 359
+cx = zeros(1,180);
+cy = zeros(1,180);
+for j = 0:179
+    i = j*2;
+    radians = i/180*pi;
+    if i < 90
+        cx(j+1) = sqrt(a^2 * cos(radians)^2) + square_center(1);
+        cy(j+1) = sqrt(b^2 * sin(radians)^2) + square_center(2);
+    elseif i < 180
+        cx(j+1) = -sqrt(a^2 * cos(radians)^2) + square_center(1);
+        cy(j+1) = sqrt(b^2 * sin(radians)^2) + square_center(2);
+    elseif i < 270
+        cx(j+1) = -sqrt(a^2 * cos(radians)^2) + square_center(1);
+        cy(j+1) = -sqrt(b^2 * sin(radians)^2) + square_center(2);
+    else
+        cx(j+1) = sqrt(a^2 * cos(radians)^2) + square_center(1);
+        cy(j+1) = -sqrt(b^2 * sin(radians)^2) + square_center(2);
+    end
+end
+
+cx = round(cx);
+cy = round(cy);
 
 %{
 imshow(Img)
 hold on
-plot(size(Img, 2)/2, size(Img, 1)/2, 'g+', 'markersize', 30)
 plot(square_center(1), square_center(2), 'rX', 'markersize', 30)
-legend('g+ = screenshot center', 'rX = rotation center')
 plot(cx, cy, '-gx')
 %}
 
 counter = zeros(size(cx));
-algpreptime = toc
+%algpreptime = toc
 % search circle
-tic
+%tic
 for h = 1:length(cx)
        
     subImgXinds = [cx(h) - Xhalfrange: cx(h) + Xhalfrange];
@@ -56,13 +81,80 @@ for h = 1:length(cx)
     counter(h) = sum(sum(subImg))/pixelGroupSize;
     
 end
-%disp(find(counter <=0.605 & counter >= 0.596));
+%disp(find(counter <= upperThreshold & counter >= lowerThreshold));
 
-playercenterind = round(mean(find(counter <=0.605 & counter >= 0.596)));
+candidates = find(counter <= upperThreshold & counter >= lowerThreshold);
+
+if isempty(candidates)
+   playerX = -1;
+   playerY = -1;
+   return
+end
+
+cLen = size(candidates, 2);
+
+if cLen > 1 % Find longest run
+    temp2 = zeros(cLen-1);
+    temp2(1:cLen-1) = candidates(2:cLen) - candidates(1:cLen-1);
+
+    runSize = 1;
+    runSizeMax = 0;
+    runSizeFirst = 1;
+    runIndex = 1;
+    for i = 1:cLen-1
+        if temp2(i) == 1
+            runSize = runSize + 1;
+            if i == cLen-1
+                if runSizeMax < runSize
+                    runSizeMax = runSize;
+                    runIndexMax = runIndex;
+                end
+            end
+        else
+            if runSizeMax < runSize
+                runSizeMax = runSize;
+                runIndexMax = runIndex;
+                if runIndex == 1
+                    runSizeFirst = runSize;
+                end
+            end
+            runSize = 1;
+            runIndex = i;
+        end
+    end
+                       
+    if candidates(1) == 1 && candidates(cLen) == j+1
+       % LOOP!
+       loop = true;
+       runSize = runSize + runSizeFirst;
+       runIndex = 1;
+       if runSizeMax < runSize
+            runSizeMax = runSize;
+            runIndexMax = runIndex;
+       end
+       
+    else
+        loop = false;
+       
+    end
+    
+    % Not perfect for looping
+    if loop == true
+        candID = runIndexMax;
+    else
+        candID = runIndexMax + floor(runSizeMax/2);
+    end
+    playercenterind = candidates(candID);
+    
+else
+   playercenterind = candidates(1); 
+end
+
+%playercenterind = round(mean(find(counter <= upperThreshold & counter >= lowerThreshold)));
 
 playerX = cx(playercenterind);
 playerY = cy(playercenterind);
-playerfind = toc
+%playerfind = toc
 
 
 %debug = 1;
