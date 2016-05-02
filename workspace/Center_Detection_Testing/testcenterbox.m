@@ -4,13 +4,14 @@ Img = Img(:,:,1);
 Img = im2bw(Img, 0.5);
 square_center = [round((896+785)/2), round((480+592)/2)];
 CropImg = Img(square_center(2) - 110 : square_center(2) + 110, square_center(1) - 110 : square_center(1) + 110);
+[centerSize, numSides, wallAngles] = centerboxFinal(CropImg)
+debug = 1;
 
-
-tic
-for i = 1:200
-    centerbox_orig;
-end
-toc
+% tic
+% for i = 1:200
+%     centerbox_orig;
+% end
+% toc
 
 %{
 tic
@@ -43,12 +44,12 @@ for i = 1:200
 end
 toc
 %}
-
-tic
-for i = 1:200
-    centerbox5;
-end
-toc
+% 
+% tic
+% for i = 1:200
+%     centerbox5;
+% end
+% toc
 
 tic
 for i = 1:200

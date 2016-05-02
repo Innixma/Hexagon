@@ -5,9 +5,9 @@ function [centerSize, numSides, wallAngles] = centerboxFinal(CropImg)
     centerX = round(size(CropImg, 2)/2);
     centerY = round(size(CropImg, 1)/2);
 
-    %figure; imshow(CropImg); hold on; plot(centerX, centerY, 'rX', 'markersize', 30);
+    figure; imshow(CropImg); hold on; plot(centerX, centerY, 'rX', 'markersize', 30);
 
-    radius = 51:100;
+    radius = 100:250;
     lineIntVal = zeros(size(radius));
     theta = 1:360;
     dists = zeros(size(theta));
@@ -21,12 +21,12 @@ function [centerSize, numSides, wallAngles] = centerboxFinal(CropImg)
             end
         end
 
-        %plot(centerWallX, centerWallY, 'r.', 'markersize', 30);
+%         plot(centerWallX, centerWallY, 'r.', 'markersize', 30);
 
         dists(i) = radius(j);
     end
 
-    %figure; plot(dists)
+    figure; plot(dists)
 
     [pks,wallAngles] = findpeaks(dists);
 
