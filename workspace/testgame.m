@@ -130,31 +130,19 @@ for i = 1:frames
     
     %capture_img = imcomplement(capture_img);
     
-    %leftImg = capture_img(y_center, 1:x_center);
-    %rightImg = capture_img(y_center, x_center+1:x_max);
-    %upImg = capture_img(1:y_center, x_center);
-    %downImg = capture_img(y_center+1:y_max, x_center);
-    %centerImg = capture_img(y_center-y_max/10+3:y_center+y_max/10-3,x_center-y_max/10-35:x_center+y_max/10+35);
     centerImg = capture_img(y_center-center_areafix_y:y_center+center_areafix_y,x_center-center_areafix_x:x_center+center_areafix_x);
     centerImg_size = size(centerImg);
     centerImg_center = floor(centerImg_size/2);
-    
-    %centerImg(centerImg_center(1)-54:centerImg_center(1)+58,centerImg_center(2)-78:centerImg_center(2)+80) = 1;
-    %centerImg(centerImg_center(1)-center_boxfix_y:centerImg_center(1)+center_boxfix_y,centerImg_center(2)-center_boxfix_x:centerImg_center(2)+center_boxfix_x) = 1;
-    
-    
-    
-    %imshow(capture_img);
-    %imshow(centerImg);
-    %break;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Find Center
     
-    [centerSize, numSides, wallAngles] = centerboxFinal(centerImg);
+    %[centerSize, numSides, wallAngles] = centerboxFinal(centerImg);
+    [centerSize, numSides, wallAngles] = centerboxNick(centerImg);
     
     if numSides < 3
         disp('Waiting for game to start')
+        disp(['numSides = ' int2str(numSides)]);
         continue;
     end
     idealAngles = zeros(1,numSides);
@@ -179,19 +167,12 @@ for i = 1:frames
     
     %break;
     
-    %tic
     % Remove player from image so it doesn't interfere
     xRemoveRel = player_x + x_half - round(centerImg_size(2)/2);
     yRemoveRel = player_y + y_half - round(centerImg_size(1)/2);
     yRemovePixels = round(centerImg_size(1)/16);
     xRemovePixels = round(centerImg_size(2)/16);
     capture_img(yRemoveRel-yRemovePixels:yRemoveRel+yRemovePixels,xRemoveRel-xRemovePixels:xRemoveRel+xRemovePixels) = 1;
-    %toc
-    
-    %imshow(capture_img);
-    %break;
-    
-    
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
@@ -224,14 +205,21 @@ for i = 1:frames
     end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    % Wall velocity = negative if no wall now
-    
+    % Wall velocity = negative if no wall now   
     if numSides == numSidesPrevious
         wallVelocity = wallDistancePrevious - wallDistance;
         wallVelocity(wallVelocity<0) = 0; % No negatives
     else % numSides changed! Must recalibrate
         wallVelocity = zeros(1, numSides);
         disp(['numSides changed to ' int2str(numSides)]);
+        % DEBUG
+        %{
+        if numSides == 5
+            debug = 1;
+            break;
+        end
+        %}
+        
     end
     
     numSidesPrevious = numSides;

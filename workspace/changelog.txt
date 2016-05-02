@@ -1,3 +1,8 @@
+V0.07 By Nick Erickson
+- Rotation Invariant Center Detection working.
+- Still issues with Player Detection
+- Will Implement video playback soon
+
 V0.06 By Nick Erickson
 - New Player Detection Fixed, works well
 - Still a few issues at extreme cases, will fix.
