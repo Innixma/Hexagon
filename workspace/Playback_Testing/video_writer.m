@@ -7,7 +7,8 @@ V(:,:,f) = F;
 % now we're done so write to file
 vw = VideoWriter('test.avi');
 open(vw);
-for f = 1:frames
+for f = 1:frames   
 	writeVideo(vw,V(:,:,f));
+
 end
 close(vw);
