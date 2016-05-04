@@ -1,3 +1,13 @@
+V0.09 By Nick Erickson
+- HUGE UPDATE
+- Fixed pathfinding for rotation (AI can play rotation levels now!)
+- Expanded video playback feature immensely
+- Added player position prediction based off of previous move (MUCH better now, this fixes pinging)
+- Issues with player detection and close walls, will look into. (Appears to be only major issue remaining)
+- Still need to fix velocity of walls, currently fixed.
+- Still need to fix centerbox detection to not be hardcoded.
+- Still need to fix player detection to work on dynamic resolution.
+
 V0.08 By Nick Erickson
 - Added in video playback feature
 - Still not fully fleshed out
