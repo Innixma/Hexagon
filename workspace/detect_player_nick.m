@@ -1,4 +1,3 @@
-
 function [playerX, playerY] = detect_player_nick(Img, centerSize, playerSize)
 % Now with an ellipse to deal with stretched images instead of a circle
 % THIS MUST TAKE IN A CROPPED IMAGE CENTERED AT THE PLAYER'S ORBITAL CENTER
@@ -16,6 +15,7 @@ ymax = size(Img, 1);
 
 ratioNew = round(centerSize*1.35);
 
+% area ratio to look around the detection ellipse
 ratioArea = round(sqrt(playerSize)*1.2);
 
 %ratio1 = 0.83;
@@ -36,14 +36,11 @@ square_center = [round(xmax/2), round(ymax/2)];
 %Xsearchoffset = round(ratio1 * square_center(1));
 %Ysearchoffset = round(ratio1 * square_center(2));
 
+% pixel offset to look around the detection ellipse
 Xsearchoffset = ratioNew;
 Ysearchoffset = ratioNew*ymax/xmax;
 
-if Xsearchoffset+ratioArea >= xmax/2
-    playerX = -1;
-    playerY = -1;
-    return;
-elseif Ysearchoffset+ratioArea >= ymax/2
+if Xsearchoffset+ratioArea >= xmax/2 || Ysearchoffset+ratioArea >= ymax/2
     playerX = -1;
     playerY = -1;
     return;
@@ -70,6 +67,7 @@ lowerThreshold = playerThreshold-0.002;
 a = (xbottom-xtop)/2;
 b = (ybottom-ytop)/2;
 
+%% find bin x/y values for pixels around the detection ellipse
 % Theta from 0 to 359
 cx = zeros(1,180);
 cy = zeros(1,180);
@@ -94,6 +92,7 @@ end
 cx = round(cx);
 cy = round(cy);
 
+%% find bin counts for pixels around the detection ellipse
 counter = zeros(size(cx));
 %algpreptime = toc
 % search circle

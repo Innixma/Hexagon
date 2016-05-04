@@ -37,6 +37,7 @@
 % 155 by 108 square
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% window parameters
 % Parameters:
 % Window location coords, (1,1) = top left
 x_offset = 0;
@@ -45,12 +46,17 @@ x_max = 1920;
 y_max = 1020;
 
 %[x_offset,y_offset,x_max,y_max] = screenselect();
+
+% game window position (hardcoded)
 x_offset = 458;
 y_offset = 188;
+
+% game resolution (hardcoded)
 x_max = 1020;
 y_max = 764;
 
 
+% ensure dimensions are divisible by 2
 if mod(x_max,2) ~= 0
     x_max = x_max - 1;   
 end
@@ -58,10 +64,13 @@ if mod(y_max,2) ~= 0
     y_max = y_max - 1;   
 end
 
+%% player parameters
+% calculate expected player size (not scale invaliant @TODO fix this)
 playerSize = round(x_max/100*y_max/100)-2;% Number of Pixels (roughly)
 %playerSize = 58;
 
-frames = 600; % How long code runs
+%% video debug vars
+frames = 600; % How long code runs for debug video
 video_img = uint8(zeros(y_max,x_max,frames));
 first_wall_list = zeros(1,frames);
 numWalls_list = zeros(1,frames);
@@ -72,10 +81,12 @@ playerWall_list = zeros(1,frames);
 wallDistance_list = zeros(10,frames);
 movingChoice_list = zeros(1,frames);
 startingWall_list = zeros(10,2,frames);
+
+%% other parameters
+
 framerate = 25; % Approximate amount of frames processed per second
 numSides = 4;
 image_threshold = 0.8; % From 1 to 0, threshold is more strict with higher number
-
 
 % Lower value = More picky with its position, more prone to error
 centering_threshold = 20; % Angle away from the center of a safe side that the AI is content with being.
@@ -92,9 +103,11 @@ center_areafix_x = round(x_max/9)-18;
 center_areafix_y = round(y_max/9)+8;
 centerImg_size = [center_areafix_y*2+1, center_areafix_x*2+1];
 centerImg_center = floor(centerImg_size/2);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% AI state variables
 % Initialization Variables
 lockFrames = 0;
 setLockFrames = 0;
@@ -111,6 +124,7 @@ wallVelocity_netCount = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% utility variables (don't worry about it)
 x_half = round(x_max/2);
 y_half = round(y_max/2);
 x_center = x_half;
@@ -120,9 +134,11 @@ centerMaxRadius = round(centerImg_size(1)/2.1);
 centerMinRadius = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%% actual algorithm loop
 tic;
 for i = 1:frames
     %tic;
+	%% framerate calculation
     if mod(i,100) == 0
         timeElapsed = toc;
         framerate = round(100 / timeElapsed);
@@ -131,24 +147,24 @@ for i = 1:frames
     end
     playerWallPosition = 0;
     
+	%% this does nothing ignore pls
     if lockFrames ~= 0
         lockFrames = lockFrames - 1;
     end
     %tic;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Get image from monitor
+    % Get image from monitor for video debug
     video_img(:,:,i) = screencapture2(x_offset, y_offset, x_max, y_max);
     
-    % make it binary
+    % make it binary (for better performance capture into temporary matrix 
+	% rather than video_img)
     capture_img = im2bw(video_img(:,:,i), image_threshold);
     
     %capture_img = imcomplement(capture_img);
     
     % Remove Timer (OPEN HEXAGON ONLY)
     capture_img(10:48,12:220) = 1; % 1020x 764y only
-    
-    
     
     centerImg = capture_img(y_center-center_areafix_y:y_center+center_areafix_y,x_center-center_areafix_x:x_center+center_areafix_x);
     
@@ -182,6 +198,7 @@ for i = 1:frames
     centerSize_list(i) = centerSize;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
+	%% offset wall angles to get ideal angles
     idealAngles = zeros(1,numSides);
     idealAngles(1) = mod(wallAngles(numSides)+wallAngles(1)-360,360);
     if idealAngles(1) > 180
@@ -224,6 +241,7 @@ for i = 1:frames
         
         if previousMove == 0 % No movement, no adjustment
            
+		%% predict actual player location given previous move
         elseif previousMove == 1 % Moved left, positive adjust
             movedDist = 360/(rotationSpeed*framerate);
             playerAngle = playerAngle+movedDist;
@@ -245,7 +263,7 @@ for i = 1:frames
     
     %break;
     
-    % Remove player from image so it doesn't interfere
+    % Remove player from image so it doesn't interfere with wall detection
     xRemoveRel = player_x + x_half - round(centerImg_size(2)/2);
     yRemoveRel = player_y + y_half - round(centerImg_size(1)/2);
     yRemovePixels = round(centerImg_size(1)/13);
@@ -255,6 +273,8 @@ for i = 1:frames
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%% wall detection
+	
     wallDistance = zeros(1, numSides);
     wallDistance = wallDistance - 1;
     startRadius = centerSize + 3;
@@ -294,6 +314,7 @@ for i = 1:frames
     % Wall velocity = negative if no wall now   
     if numSides == numSidesPrevious
         
+		% correct wall index reference frame (due to rotation)
         % Check if rotation changed walls
         % previousMove
         wallAngleTest = wallAngles(1) - wallAnglesPrevious(1);
@@ -310,6 +331,7 @@ for i = 1:frames
         wallVelocity = wallDistancePrevious - wallDistance;
         wallVelocity(wallVelocity<0) = 0; % No negatives
         
+		% wall velocity running average over frames
         % Average out velocity so it is smooth
         for wall = 1:numSides
             if wallVelocityPrevious(wall) == 0 && wallVelocity(wall) ~= 0
@@ -323,6 +345,7 @@ for i = 1:frames
         end
         
         % Renew if high
+		% forget history when our history 'length' exceeds 400
         if wallVelocity_netCount > 400
             wallVelocity_net = wallVelocity_net/wallVelocity_netCount*50;
             wallVelocity_netCount = 50;
@@ -335,7 +358,7 @@ for i = 1:frames
     
     playerAnglePrevious = playerAngle;
     wallAnglesPrevious = wallAngles;
-    % DEGUG
+    % DEBUG
     %debug = 1;
     %wallVelocity(:) = 17;
     %disp(wallVelocity);
@@ -355,6 +378,7 @@ for i = 1:frames
     %wallDistance = wallDistance - wallVelocity;
     
     % Alternate:
+	%% apply the avgeraged velocity to the detected walls
     wallVelocityAvg = round(wallVelocity_net/wallVelocity_netCount);
     wallDistance = wallDistance - wallVelocityAvg;
     wallDistance(wallDistance<0) = 0; % No negatives
@@ -366,6 +390,7 @@ for i = 1:frames
     %idealAngles = [0 90 180 270];
 
     %tic;
+	%% get wall index of player
     for j = 1:size(wallAngles,2)
        if wallAngles(j) > playerAngle
           playerWallPosition = j;
@@ -376,10 +401,12 @@ for i = 1:frames
        playerWallPosition = 1;
     end
     
+	% debug
     playerWall_list(i) = playerWallPosition;
     % Incentivize the player to stay in current spot if safe
     wallDistance(playerWallPosition) = wallDistance(playerWallPosition) + 1;
     
+	%% pathfinding
     
     movingChoice = 0; % 0 = No move, 1 = left, 2 = right
     % Approx 0.15 seconds to move 90 degrees
