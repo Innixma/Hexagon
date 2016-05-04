@@ -1,3 +1,11 @@
+V0.10 By Nick Erickson
+- Made player detection dynamic (Resistant to pulse)
+- Fixed player detection (I think?)
+- Still need to fix velocity of walls, currently fixed.
+- Still need to fix centerbox detection to not be hardcoded.
+- Fixed player position prediction
+- Removed redundant variables
+
 V0.09 By Nick Erickson
 - HUGE UPDATE
 - Fixed pathfinding for rotation (AI can play rotation levels now!)

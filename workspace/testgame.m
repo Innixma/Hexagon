@@ -58,6 +58,7 @@ if mod(y_max,2) ~= 0
     y_max = y_max - 1;   
 end
 
+playerSize = round(x_max/100*y_max/100)-2;% Number of Pixels (roughly)
 
 frames = 600; % How long code runs
 video_img = zeros(y_max,x_max,frames);
@@ -84,20 +85,12 @@ rotationSpeed = 0.62;
 % Lower value = More risky in its movements
 player_closeness_threshold = 45;
 
-%center_areafix_x = round(x_max/10)-55; % Change these two variables to accurately include center box and player for player detection
-%center_areafix_x = round(x_max/10)-30;
-center_areafix_x = round(x_max/10)-14;
-center_areafix_y = round(y_max/10)+6;
-
-% These params don't matter for Danesh, make them = 1
-center_boxfix_x = round(center_areafix_x/1.25); % Change these two variables to accurately remove center box from player detection
-center_boxfix_y = round(center_areafix_y/1.25); % Too large of values will also remove the player, so be careful
-
-wall_start_x = center_boxfix_x + 15; % Increase if wall finder is detecting the player as a wall
-wall_start_y = center_boxfix_y + 15;
-
-
-
+%center_areafix_x = round(x_max/10)-14;
+%center_areafix_y = round(y_max/10)+6;
+center_areafix_x = round(x_max/9)-18;
+center_areafix_y = round(y_max/9)+8;
+centerImg_size = [center_areafix_y*2+1, center_areafix_x*2+1];
+centerImg_center = floor(centerImg_size/2);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -120,6 +113,7 @@ x_center = x_half;
 y_center = y_half;
 diag_length = sqrt(x_center^2 + y_center^2);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 tic;
 for i = 1:frames
     %tic;
@@ -135,29 +129,30 @@ for i = 1:frames
         lockFrames = lockFrames - 1;
     end
     %tic;
-    video_img(:,:,i) = screencapture(x_offset, y_offset, x_max, y_max);
-    % make it binary
     
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Get image from monitor
+    video_img(:,:,i) = screencapture(x_offset, y_offset, x_max, y_max);
+    
+    % make it binary
     capture_img = im2bw(video_img(:,:,i), image_threshold);
     
     %capture_img = imcomplement(capture_img);
     
     centerImg = capture_img(y_center-center_areafix_y:y_center+center_areafix_y,x_center-center_areafix_x:x_center+center_areafix_x);
-    centerImg_size = size(centerImg);
-    centerImg_center = floor(centerImg_size/2);
-
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Find Center
-    
-    %[centerSize, numSides, wallAngles] = centerboxFinal(centerImg);
-    [centerSize, numSides, wallAngles] = centerboxNick(centerImg);
-    
-    
+    [centerSize, numSides, wallAngles] = centerboxNick(centerImg);   
     if numSides < 3
         disp('Waiting for game to start')
         disp(['numSides = ' int2str(numSides)]);
         continue;
     end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % VIDEORECORDING
@@ -182,7 +177,7 @@ for i = 1:frames
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Find Player
     %tic
-    [player_x, player_y] = detect_player_nick(centerImg);
+    [player_x, player_y] = detect_player_nick(centerImg, centerSize, playerSize);
     player_list(:,i) = [player_y,player_x];
     %toc
     if player_x == -1
@@ -241,7 +236,7 @@ for i = 1:frames
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     wallDistance = zeros(1, numSides);
     wallDistance = wallDistance - 1;
-    startRadius = centerSize + 15;
+    startRadius = centerSize + 10;
     for wall = 1:numSides
         idealAngle = idealAngles(wall);
         if abs(cosd(idealAngle))/x_half > abs(sind(idealAngle))/y_half % Max x will reach first
@@ -322,7 +317,10 @@ for i = 1:frames
     end
     
     playerWall_list(i) = playerWallPosition;
-
+    % Incentivize the player to stay in current spot if safe
+    wallDistance(playerWallPosition) = wallDistance(playerWallPosition) + 1;
+    
+    
     movingChoice = 0; % 0 = No move, 1 = left, 2 = right
     % Approx 0.15 seconds to move 90 degrees
     [bestMoveDistance, bestMoveLocation] = max(wallDistance);
@@ -376,23 +374,23 @@ for i = 1:frames
                 if leftMoveCost <= rightMoveCost
                     % Move Left
                     movingChoice = 1;
-                    setLockFrames = 2;
+                    setLockFrames = 0;
                     %disp('Super Panic Move Left');
                 else
                     % Move Right
                     movingChoice = 2;
-                    setLockFrames = 2;
+                    setLockFrames = 0;
                     %disp('Super Panic Move Right');
                 end
             elseif leftClose == 1
                 % Move Right
                 movingChoice = 2;
-                setLockFrames = 2;
+                setLockFrames = 0;
                 %disp('Panic Move Right');
             elseif rightClose == 1
                 % Move Left
                 movingChoice = 1;
-                setLockFrames = 2;
+                setLockFrames = 0;
                 %disp('Panic Move Left');
             else % Currently safe, can now figure out best move timely    
 
@@ -611,6 +609,7 @@ for f = 1:frames
         %wallY = floor(y_center + centerSize_list(f)*sind(wallAngles(angle)));
         wallY = floor(y_center - centerSize_list(f)*sind(wallAngles(angle)));
         
+        %{
         if angle == 1
             rgbImage(wallY-10:wallY+10,wallX-10:wallX+10,2) = 0;
         elseif angle == 2
@@ -619,6 +618,9 @@ for f = 1:frames
         else
             rgbImage(wallY-10:wallY+10,wallX-10:wallX+10,3) = 0;
         end
+        %}
+        
+        rgbImage(wallY-10:wallY+10,wallX-10:wallX+10,3) = 0;
         
         %{
         wallStartY = startingWall_list(angle,1,f);
