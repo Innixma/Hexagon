@@ -1,3 +1,10 @@
+V0.11 By Nick Erickson
+- HUGE PROGRESS
+- Fixed Velocity of walls
+- AI can now play levels of ANY rotation speed
+- AI can now play very fast levels
+- AI only fails due to low framerate
+
 V0.10 By Nick Erickson
 - Made player detection dynamic (Resistant to pulse)
 - Fixed player detection (I think?)

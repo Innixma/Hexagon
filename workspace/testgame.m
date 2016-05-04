@@ -71,19 +71,19 @@ playerWall_list = zeros(1,frames);
 wallDistance_list = zeros(10,frames);
 movingChoice_list = zeros(1,frames);
 startingWall_list = zeros(10,2,frames);
-framerate = 40; % Approximate amount of frames processed per second
+framerate = 25; % Approximate amount of frames processed per second
 numSides = 4;
 image_threshold = 0.2; % From 1 to 0, threshold is more strict with higher number
 
 
 % Lower value = More picky with its position, more prone to error
-centering_threshold = 25; % Angle away from the center of a safe side that the AI is content with being.
+centering_threshold = 20; % Angle away from the center of a safe side that the AI is content with being.
 
 % seconds to go 360 degrees:
 rotationSpeed = 0.62;
 
 % Lower value = More risky in its movements
-player_closeness_threshold = 45;
+player_closeness_threshold = 0;
 
 %center_areafix_x = round(x_max/10)-14;
 %center_areafix_y = round(y_max/10)+6;
@@ -104,6 +104,9 @@ playerAnglePrevious = 0;
 previousMove = 0;
 wallDistancePrevious = zeros(1, numSides);
 numSidesPrevious = numSides;
+wallAnglesPrevious = zeros(1,numSides);
+wallVelocity_net = 10;
+wallVelocity_netCount = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -138,6 +141,11 @@ for i = 1:frames
     capture_img = im2bw(video_img(:,:,i), image_threshold);
     
     %capture_img = imcomplement(capture_img);
+    
+    % Remove Timer (OPEN HEXAGON ONLY)
+    capture_img(10:48,12:220) = 1; % 1020x 764y only
+    
+    
     
     centerImg = capture_img(y_center-center_areafix_y:y_center+center_areafix_y,x_center-center_areafix_x:x_center+center_areafix_x);
     
@@ -236,7 +244,7 @@ for i = 1:frames
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     wallDistance = zeros(1, numSides);
     wallDistance = wallDistance - 1;
-    startRadius = centerSize + 10;
+    startRadius = centerSize + 3;
     for wall = 1:numSides
         idealAngle = idealAngles(wall);
         if abs(cosd(idealAngle))/x_half > abs(sind(idealAngle))/y_half % Max x will reach first
@@ -275,30 +283,69 @@ for i = 1:frames
         
         % Check if rotation changed walls
         % previousMove
-        
-        
+        wallAngleTest = wallAngles(1) - wallAnglesPrevious(1);
+        if abs(wallAngleTest) > 360/numSides-30
+            if wallAngleTest > 0 % If positive
+               wallDistancePrevious = circshift(wallDistancePrevious',-1)';
+               wallVelocityPrevious = circshift(wallVelocityPrevious',-1)';
+            else
+               wallDistancePrevious = circshift(wallDistancePrevious',1)';
+               wallVelocityPrevious = circshift(wallVelocityPrevious',1)';
+            end
+        end
+        %disp(wallAngleTest);
         wallVelocity = wallDistancePrevious - wallDistance;
         wallVelocity(wallVelocity<0) = 0; % No negatives
+        
+        % Average out velocity so it is smooth
+        for wall = 1:numSides
+            if wallVelocityPrevious(wall) == 0 && wallVelocity(wall) ~= 0
+                wallVelocity(wall) = round(wallVelocity_net/wallVelocity_netCount); % Be conservative with new walls
+            end
+            if wallVelocity(wall) ~= 0
+               wallVelocity_net = wallVelocity_net + wallVelocity(wall);
+               wallVelocity_netCount = wallVelocity_netCount+1;
+               wallVelocity(wall) = round(wallVelocity_net/wallVelocity_netCount);
+            end
+        end
+        
+        % Renew if high
+        if wallVelocity_netCount > 400
+            wallVelocity_net = wallVelocity_net/wallVelocity_netCount*50;
+            wallVelocity_netCount = 50;
+        end
+        
     else % numSides changed! Must recalibrate
         wallVelocity = zeros(1, numSides);
         disp(['numSides changed to ' int2str(numSides)]);       
     end
     
     playerAnglePrevious = playerAngle;
-    
+    wallAnglesPrevious = wallAngles;
     % DEGUG
-    debug = 1;
-    wallVelocity(:) = 17;
+    %debug = 1;
+    %wallVelocity(:) = 17;
+    %disp(wallVelocity);
     
     numSidesPrevious = numSides;
     wallDistancePrevious = wallDistance;
+    wallVelocityPrevious = wallVelocity;
     
-    debug = 1;
+    
+    
+    %debug = 1;
     wallDistance_list(1:numSides,i) = wallDistance;
     
-    %disp(wallVelocity);
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Wall prediction!
+    % Original:
+    %wallDistance = wallDistance - wallVelocity;
     
-
+    % Alternate:
+    wallVelocityAvg = round(wallVelocity_net/wallVelocity_netCount);
+    wallDistance = wallDistance - wallVelocityAvg;
+    wallDistance(wallDistance<0) = 0; % No negatives
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Act on information
@@ -374,23 +421,23 @@ for i = 1:frames
                 if leftMoveCost <= rightMoveCost
                     % Move Left
                     movingChoice = 1;
-                    setLockFrames = 0;
+                    %setLockFrames = 0;
                     %disp('Super Panic Move Left');
                 else
                     % Move Right
                     movingChoice = 2;
-                    setLockFrames = 0;
+                    %setLockFrames = 0;
                     %disp('Super Panic Move Right');
                 end
             elseif leftClose == 1
                 % Move Right
                 movingChoice = 2;
-                setLockFrames = 0;
+                %setLockFrames = 0;
                 %disp('Panic Move Right');
             elseif rightClose == 1
                 % Move Left
                 movingChoice = 1;
-                setLockFrames = 0;
+                %setLockFrames = 0;
                 %disp('Panic Move Left');
             else % Currently safe, can now figure out best move timely    
 
