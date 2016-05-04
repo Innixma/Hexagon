@@ -1,3 +1,7 @@
+V0.12 By Nick Erickson
+- Made centerbox detection scale invariant
+- Will make player detection truly scale invariant soon
+
 V0.11 By Nick Erickson
 - HUGE PROGRESS
 - Fixed Velocity of walls

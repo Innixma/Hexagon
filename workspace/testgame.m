@@ -59,9 +59,10 @@ if mod(y_max,2) ~= 0
 end
 
 playerSize = round(x_max/100*y_max/100)-2;% Number of Pixels (roughly)
+%playerSize = 58;
 
 frames = 600; % How long code runs
-video_img = zeros(y_max,x_max,frames);
+video_img = uint8(zeros(y_max,x_max,frames));
 first_wall_list = zeros(1,frames);
 numWalls_list = zeros(1,frames);
 centerSize_list = zeros(1,frames);
@@ -73,7 +74,7 @@ movingChoice_list = zeros(1,frames);
 startingWall_list = zeros(10,2,frames);
 framerate = 25; % Approximate amount of frames processed per second
 numSides = 4;
-image_threshold = 0.2; % From 1 to 0, threshold is more strict with higher number
+image_threshold = 0.8; % From 1 to 0, threshold is more strict with higher number
 
 
 % Lower value = More picky with its position, more prone to error
@@ -115,6 +116,8 @@ y_half = round(y_max/2);
 x_center = x_half;
 y_center = y_half;
 diag_length = sqrt(x_center^2 + y_center^2);
+centerMaxRadius = round(centerImg_size(1)/2.1);
+centerMinRadius = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 tic;
@@ -135,7 +138,7 @@ for i = 1:frames
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Get image from monitor
-    video_img(:,:,i) = screencapture(x_offset, y_offset, x_max, y_max);
+    video_img(:,:,i) = screencapture2(x_offset, y_offset, x_max, y_max);
     
     % make it binary
     capture_img = im2bw(video_img(:,:,i), image_threshold);
@@ -154,7 +157,17 @@ for i = 1:frames
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Find Center
-    [centerSize, numSides, wallAngles] = centerboxNick(centerImg);   
+    [centerSize, centerLeast, numSides, wallAngles] = centerboxNick(centerImg, centerMaxRadius, centerMinRadius);
+    
+    centerMaxRadius = centerSize+10;
+    if centerMaxRadius > centerImg_center(1)-2
+        centerMaxRadius = centerImg_center(1)-2;
+    end
+    centerMinRadius = centerLeast-10;
+    if centerMinRadius < 0
+        centerMinRadius = 0;
+    end
+    
     if numSides < 3
         disp('Waiting for game to start')
         disp(['numSides = ' int2str(numSides)]);

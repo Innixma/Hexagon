@@ -1,4 +1,4 @@
-function [centerSize, numSides, wallAngles] = centerboxNick(CropImg)
+function [centerMax, centerMin, numSides, wallAngles] = centerboxNick(CropImg, maxRadius, minRadius)
     % Dists code by Danesh,
     % Function code by Nick, 
     % Heavily modified and optimized by Nick
@@ -8,7 +8,7 @@ function [centerSize, numSides, wallAngles] = centerboxNick(CropImg)
 
     %figure; imshow(CropImg); hold on; plot(centerX, centerY, 'rX', 'markersize', 30);
 
-    radius = 30:70;
+    radius = minRadius:maxRadius;
     lineIntVal = zeros(size(radius));
     thetas = 1:360;
     dists = zeros(size(thetas));
@@ -54,6 +54,7 @@ end
 wallAngles = mod(wallAngles,360);
 [~,rotateCount] = min(wallAngles);
 wallAngles = circshift(wallAngles',-rotateCount+1)';
-centerSize = yu;
+centerMax = yu;
+centerMin = yl;
 
 end
