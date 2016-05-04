@@ -1,5 +1,5 @@
 
-function [playerX, playerY] = detect_player_nick(Img)
+function [playerX, playerY] = detect_player_nick(Img, centerSize, playerSize)
 % Now with an ellipse to deal with stretched images instead of a circle
 % THIS MUST TAKE IN A CROPPED IMAGE CENTERED AT THE PLAYER'S ORBITAL CENTER
 % Version 5 is Version 4 made dimensionless.  The only concern I have is
@@ -7,30 +7,65 @@ function [playerX, playerY] = detect_player_nick(Img)
 
 % Original by Danesh
 % Heavily modified by Nick
-
-ratio1 = 0.83;
-ratio2 = 0.16;
-%upperThreshold = 0.625;
-%lowerThreshold = 0.546;
-upperThreshold = 0.90;
-lowerThreshold = 0.855;
-
 %tic
+
+% Player = 78 pixels on 764x1020 (Approx 9x9)
+
 xmax = size(Img, 2);
 ymax = size(Img, 1);
+
+ratioNew = round(centerSize*1.35);
+
+ratioArea = round(sqrt(playerSize)*1.2);
+
+%ratio1 = 0.83;
+%ratio2 = 0.16;
+
+%upperThreshold = 0.625;
+%lowerThreshold = 0.546;
+%upperThreshold = 0.90;
+%lowerThreshold = 0.855;
+%lowerThreshold = 0.865;
+
+%tic
+
 square_center = [round(xmax/2), round(ymax/2)];
 
 
 
-Xsearchoffset = round(ratio1 * square_center(1));
-Ysearchoffset = round(ratio1 * square_center(2));
+%Xsearchoffset = round(ratio1 * square_center(1));
+%Ysearchoffset = round(ratio1 * square_center(2));
+
+Xsearchoffset = ratioNew;
+Ysearchoffset = ratioNew*ymax/xmax;
+
+if Xsearchoffset+ratioArea >= xmax/2
+    playerX = -1;
+    playerY = -1;
+    return;
+elseif Ysearchoffset+ratioArea >= ymax/2
+    playerX = -1;
+    playerY = -1;
+    return;
+end
+
 xtop = (square_center(1) - Xsearchoffset); xbottom = (square_center(1) + Xsearchoffset);
 ytop = (square_center(2) - Ysearchoffset); ybottom = (square_center(2) + Ysearchoffset);
 
-Xhalfrange = round(ratio2 * Xsearchoffset); % half the Xside of the square patch we search
-Yhalfrange = round(ratio2 * Ysearchoffset); % half the Yside of the square patch we search
+%Xhalfrange = round(ratio2 * Xsearchoffset); % half the Xside of the square patch we search
+%Yhalfrange = round(ratio2 * Ysearchoffset); % half the Yside of the square patch we search
+
+Xhalfrange = ratioArea;
+Yhalfrange = ratioArea;
 
 pixelGroupSize = (Xhalfrange*2+1) * (Yhalfrange*2+1);
+
+playerThreshold = 1 - playerSize/pixelGroupSize;
+upperThreshold = playerThreshold+0.04;
+lowerThreshold = playerThreshold-0.002;
+
+
+
 
 a = (xbottom-xtop)/2;
 b = (ybottom-ytop)/2;
@@ -59,21 +94,14 @@ end
 cx = round(cx);
 cy = round(cy);
 
-%{
-imshow(Img)
-hold on
-plot(square_center(1), square_center(2), 'rX', 'markersize', 30)
-plot(cx, cy, '-gx')
-%}
-
 counter = zeros(size(cx));
 %algpreptime = toc
 % search circle
 %tic
 for h = 1:length(cx)
        
-    subImgXinds = [cx(h) - Xhalfrange: cx(h) + Xhalfrange];
-    subImgYinds = [cy(h) - Yhalfrange : cy(h) + Yhalfrange];
+    subImgXinds = cx(h) - Xhalfrange: cx(h) + Xhalfrange;
+    subImgYinds = cy(h) - Yhalfrange: cy(h) + Yhalfrange;
     
     subImg = Img(subImgYinds, subImgXinds);
     
@@ -81,6 +109,14 @@ for h = 1:length(cx)
     counter(h) = sum(sum(subImg))/pixelGroupSize;
     
 end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% New stuff, derivative (V0.10)
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %disp(find(counter <= upperThreshold & counter >= lowerThreshold));
 
 candidates = find(counter <= upperThreshold & counter >= lowerThreshold);
@@ -94,31 +130,41 @@ end
 cLen = size(candidates, 2);
 
 if cLen > 1 % Find longest run
-    temp2 = zeros(cLen-1);
+    temp2 = zeros(1,cLen-1);
     temp2(1:cLen-1) = candidates(2:cLen) - candidates(1:cLen-1);
 
     runSize = 1;
+    runScore = 0;
     runSizeMax = 0;
+    runScoreMax = 0;
     runSizeFirst = 1;
     runIndex = 1;
+    
+    % For first one
+    runScore = runScore + 1/(0.2+abs(playerThreshold-counter(candidates(1)))/(upperThreshold-lowerThreshold));
     for i = 1:cLen-1
         if temp2(i) == 1
             runSize = runSize + 1;
+            runScore = runScore + 1/(0.2+abs(playerThreshold-counter(candidates(i+1)))/(upperThreshold-lowerThreshold));
             if i == cLen-1
-                if runSizeMax < runSize
+                if runScoreMax < runScore
                     runSizeMax = runSize;
+                    runScoreMax = runScore;
                     runIndexMax = runIndex;
                 end
             end
         else
-            if runSizeMax < runSize
+            if runScoreMax < runScore
                 runSizeMax = runSize;
+                runScoreMax = runScore;
                 runIndexMax = runIndex;
                 if runIndex == 1
                     runSizeFirst = runSize;
+                    runScoreFirst = runScore;
                 end
             end
             runSize = 1;
+            runScore = 1/(0.2+abs(playerThreshold-counter(candidates(i+1)))/(upperThreshold-lowerThreshold));
             runIndex = i;
         end
     end
@@ -127,9 +173,11 @@ if cLen > 1 % Find longest run
        % LOOP!
        loop = true;
        runSize = runSize + runSizeFirst;
+       runScore = runScore + runScoreFirst;
        runIndex = 1;
-       if runSizeMax < runSize
+       if runScoreMax < runScore
             runSizeMax = runSize;
+            %runScoreMax = runScore;
             runIndexMax = runIndex;
        end
        
@@ -161,13 +209,17 @@ playerY = cy(playercenterind);
 
 % Diagnostics
 
-%{
-plot(cx(playercenterind), cy(playercenterind), 'rs', 'markersize', 30)
-plot(cx(playercenterind), cy(playercenterind), 'r+', 'markersize', 25)
-%}
+%imshow(Img)
+%hold on
+%plot(square_center(1), square_center(2), 'rX', 'markersize', 30)
+%plot(cx, cy, '-gx')
+
+%plot(cx(playercenterind), cy(playercenterind), 'rs', 'markersize', 30)
+%plot(cx(playercenterind), cy(playercenterind), 'r+', 'markersize', 25)
+
 
 %debug = 2;
-
+%toc
 end
 
 
