@@ -68,9 +68,11 @@ player_list = zeros(2,frames);
 bestMove_list = zeros(1,frames);
 playerWall_list = zeros(1,frames);
 wallDistance_list = zeros(10,frames);
+movingChoice_list = zeros(1,frames);
+startingWall_list = zeros(10,2,frames);
 framerate = 40; % Approximate amount of frames processed per second
 numSides = 4;
-image_threshold = 0.5; % From 1 to 0, threshold is more strict with higher number
+image_threshold = 0.2; % From 1 to 0, threshold is more strict with higher number
 
 
 % Lower value = More picky with its position, more prone to error
@@ -80,7 +82,7 @@ centering_threshold = 25; % Angle away from the center of a safe side that the A
 rotationSpeed = 0.62;
 
 % Lower value = More risky in its movements
-player_closeness_threshold = 55;
+player_closeness_threshold = 45;
 
 %center_areafix_x = round(x_max/10)-55; % Change these two variables to accurately include center box and player for player detection
 %center_areafix_x = round(x_max/10)-30;
@@ -105,6 +107,8 @@ setLockFrames = 0;
 movingLeft = 0;
 movingRight = 0;
 playerAngle = 0;
+playerAnglePrevious = 0;
+previousMove = 0;
 wallDistancePrevious = zeros(1, numSides);
 numSidesPrevious = numSides;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -114,16 +118,16 @@ x_half = round(x_max/2);
 y_half = round(y_max/2);
 x_center = x_half;
 y_center = y_half;
+diag_length = sqrt(x_center^2 + y_center^2);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+tic;
 for i = 1:frames
     %tic;
-    if mod(i,100) == 1
-        tic;
-    elseif mod(i,100) == 0
+    if mod(i,100) == 0
         timeElapsed = toc;
         framerate = round(100 / timeElapsed);
         disp(['Framerate = ' int2str(framerate)]);
+        tic;
     end
     playerWallPosition = 0;
     
@@ -163,7 +167,12 @@ for i = 1:frames
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     idealAngles = zeros(1,numSides);
-    idealAngles(1) = mod(360 - wallAngles(numSides)-wallAngles(1),360);
+    idealAngles(1) = mod(wallAngles(numSides)+wallAngles(1)-360,360);
+    if idealAngles(1) > 180
+        idealAngles(1) = idealAngles(1)+(360-idealAngles(1))/2;
+    else
+        idealAngles(1) = idealAngles(1)/2;
+    end
     for j = 2:numSides
        idealAngles(j) = (wallAngles(j-1) + wallAngles(j)) / 2; 
     end
@@ -183,13 +192,48 @@ for i = 1:frames
         playerFound = true;
     end
     
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Calculate Player Angle
+    if playerFound == true
+        yRel = -(-centerImg_center(1)+player_y);
+        xRel = -centerImg_center(2)+player_x;
+        
+        
+        playerAngle = 180 / pi * atan(yRel/xRel);
+        if xRel < 0
+            playerAngle = playerAngle + 180;
+        elseif xRel >= 0 && yRel < 0
+            playerAngle = 360 + playerAngle;
+        end
+        
+        if previousMove == 0 % No movement, no adjustment
+           
+        elseif previousMove == 1 % Moved left, positive adjust
+            movedDist = 360/(rotationSpeed*framerate);
+            playerAngle = playerAngle+movedDist;
+            if playerAngle >= 360
+                playerAngle = playerAngle - 360;
+            end
+        elseif previousMove == 2 % Moved right, negative adjust
+            movedDist = 360/(rotationSpeed*framerate);
+            playerAngle = playerAngle-movedDist;
+            if playerAngle < 0
+                playerAngle = playerAngle + 360;
+            end
+        end
+        %if mod(i,10) == 0
+            %disp(['PLAYER AT Theta = ' num2str(playerAngle)]);
+        %end
+    end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
     %break;
     
     % Remove player from image so it doesn't interfere
     xRemoveRel = player_x + x_half - round(centerImg_size(2)/2);
     yRemoveRel = player_y + y_half - round(centerImg_size(1)/2);
-    yRemovePixels = round(centerImg_size(1)/16);
-    xRemovePixels = round(centerImg_size(2)/16);
+    yRemovePixels = round(centerImg_size(1)/13);
+    xRemovePixels = round(centerImg_size(2)/13);
     capture_img(yRemoveRel-yRemovePixels:yRemoveRel+yRemovePixels,xRemoveRel-xRemovePixels:xRemoveRel+xRemovePixels) = 1;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -197,18 +241,25 @@ for i = 1:frames
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     wallDistance = zeros(1, numSides);
     wallDistance = wallDistance - 1;
+    startRadius = centerSize + 15;
     for wall = 1:numSides
         idealAngle = idealAngles(wall);
-        startRadius = centerSize + 23;
         if abs(cosd(idealAngle))/x_half > abs(sind(idealAngle))/y_half % Max x will reach first
             max_radius = floor(abs(x_half/cosd(idealAngle))); 
         else
             max_radius = floor(abs(y_half/sind(idealAngle)));
         end
         
+        %%%%%%%%%%%%%%%%
+        % RECORDING
+        xVal = floor(startRadius * cosd(idealAngle)) + x_center;
+        yVal = -floor(startRadius * sind(idealAngle)) + y_center;
+        startingWall_list(wall,:,i) = [yVal, xVal];
+        %%%%%%%%%%%%%%%%
+        
         for r = startRadius:max_radius-3
-            xVal = floor(r * cosd(idealAngle)) + x_half;
-            yVal = -floor(r * sind(idealAngle)) + y_half;
+            xVal = floor(r * cosd(idealAngle)) + x_center;
+            yVal = -floor(r * sind(idealAngle)) + y_center;
             if capture_img(yVal, xVal) == 0
                 wallDistance(wall) = r-startRadius;
                 break;
@@ -216,7 +267,8 @@ for i = 1:frames
             
         end
         if wallDistance(wall) == -1
-            wallDistance(wall) = max_radius-startRadius-2;
+            %wallDistance(wall) = max_radius-startRadius-2;
+            wallDistance(wall) = diag_length-startRadius;
         end
         
         
@@ -225,6 +277,11 @@ for i = 1:frames
     
     % Wall velocity = negative if no wall now   
     if numSides == numSidesPrevious
+        
+        % Check if rotation changed walls
+        % previousMove
+        
+        
         wallVelocity = wallDistancePrevious - wallDistance;
         wallVelocity(wallVelocity<0) = 0; % No negatives
     else % numSides changed! Must recalibrate
@@ -232,9 +289,11 @@ for i = 1:frames
         disp(['numSides changed to ' int2str(numSides)]);       
     end
     
+    playerAnglePrevious = playerAngle;
+    
     % DEGUG
     debug = 1;
-    wallVelocity(:) = 30;
+    wallVelocity(:) = 17;
     
     numSidesPrevious = numSides;
     wallDistancePrevious = wallDistance;
@@ -244,25 +303,7 @@ for i = 1:frames
     
     %disp(wallVelocity);
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Calculate Player Angle
-    if playerFound == true
-        xRel = player_x - round(centerImg_size(2)/2);
-        yRel = -player_y + round(centerImg_size(1)/2);
 
-        playerAngle = 180 / pi * atan(yRel/xRel);
-        if xRel < 0 && yRel < 0
-            playerAngle = playerAngle + 180;
-        elseif xRel < 0 && yRel >= 0
-            playerAngle = 180 + playerAngle;
-        elseif xRel >= 0 && yRel < 0
-            playerAngle = 360 + playerAngle;
-        end
-        %if mod(i,10) == 0
-            %disp(['PLAYER AT Theta = ' num2str(playerAngle)]);
-        %end
-    end
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Act on information
@@ -336,23 +377,23 @@ for i = 1:frames
                     % Move Left
                     movingChoice = 1;
                     setLockFrames = 2;
-                    disp('Super Panic Move Left');
+                    %disp('Super Panic Move Left');
                 else
                     % Move Right
                     movingChoice = 2;
                     setLockFrames = 2;
-                    disp('Super Panic Move Right');
+                    %disp('Super Panic Move Right');
                 end
             elseif leftClose == 1
                 % Move Right
                 movingChoice = 2;
                 setLockFrames = 2;
-                disp('Panic Move Right');
+                %disp('Panic Move Right');
             elseif rightClose == 1
                 % Move Left
                 movingChoice = 1;
                 setLockFrames = 2;
-                disp('Panic Move Left');
+                %disp('Panic Move Left');
             else % Currently safe, can now figure out best move timely    
 
 
@@ -444,7 +485,7 @@ for i = 1:frames
                         % HACK: Move Left anyways when safe,
                         % Avoids pinging back and forth
                         movingChoice = 1;
-                        disp('Move Left');
+                        %disp('Move Left');
                         %%%%%%%%%%%
                     end
                 end
@@ -523,6 +564,11 @@ for i = 1:frames
         setLockFrames = 0;
     end
     %toc;
+    
+    movingChoice_list(i) = movingChoice;
+    
+    previousMove = movingChoice;
+    
 end
 
 
@@ -556,13 +602,14 @@ for f = 1:frames
         idealAngles(1) = idealAngles(1) + 360;
     end   
     
-    wallAngles = fliplr(wallAngles);
-    idealAngles = fliplr(idealAngles);
-    idealAngles = circshift(idealAngles(:),1);
+    %wallAngles = fliplr(wallAngles);
+    %idealAngles = fliplr(idealAngles);
+    %idealAngles = circshift(idealAngles(:),1);
     
     for angle = 1:numWalls_list(f)
         wallX = floor(x_center + centerSize_list(f)*cosd(wallAngles(angle)));
-        wallY = floor(y_center + centerSize_list(f)*sind(wallAngles(angle)));
+        %wallY = floor(y_center + centerSize_list(f)*sind(wallAngles(angle)));
+        wallY = floor(y_center - centerSize_list(f)*sind(wallAngles(angle)));
         
         if angle == 1
             rgbImage(wallY-10:wallY+10,wallX-10:wallX+10,2) = 0;
@@ -572,6 +619,13 @@ for f = 1:frames
         else
             rgbImage(wallY-10:wallY+10,wallX-10:wallX+10,3) = 0;
         end
+        
+        %{
+        wallStartY = startingWall_list(angle,1,f);
+        wallStartX = startingWall_list(angle,2,f);
+        rgbImage(wallStartY-10:wallStartY+10,wallStartX-10:wallStartX+10,2) = floor(angle/numWalls_list(f)*255);
+        rgbImage(wallStartY-10:wallStartY+10,wallStartX-10:wallStartX+10,1) = 0;
+        %}
         
     end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -597,7 +651,8 @@ for f = 1:frames
     for angle = 1:numWalls_list(f)
         curWall = wallDistance_list(angle,f)/sqrt(y_half^2+x_half^2);
         idealX = floor(x_center + centerSize_list(f)*cosd(idealAngles(angle)));
-        idealY = floor(y_center + centerSize_list(f)*sind(idealAngles(angle))); 
+        %idealY = floor(y_center + centerSize_list(f)*sind(idealAngles(angle)));
+        idealY = floor(y_center - centerSize_list(f)*sind(idealAngles(angle))); 
         if angle == bestMove
             rgbImage(idealY-10:idealY+10,idealX-10:idealX+10,1) = 0;
             rgbImage(idealY-10:idealY+10,idealX-10:idealX+10,2) = curWall*255;
@@ -616,11 +671,32 @@ for f = 1:frames
     %playerWall_list(f)
     
     playerX = floor(x_center + centerSize_list(f)*cosd(idealAngles(playerWall_list(f))));
-    playerY = floor(y_center + centerSize_list(f)*sind(idealAngles(playerWall_list(f))));
+    %playerY = floor(y_center + centerSize_list(f)*sind(idealAngles(playerWall_list(f))));
+    playerY = floor(y_center - centerSize_list(f)*sind(idealAngles(playerWall_list(f))));
     
     rgbImage(playerY-5:playerY+5,playerX-5:playerX+5,1) = 255;
     rgbImage(playerY-5:playerY+5,playerX-5:playerX+5,2) = 0;
     rgbImage(playerY-5:playerY+5,playerX-5:playerX+5,3) = 0;
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Player movements
+    rgbImage(y_center-10:y_center+10,x_center-20:x_center+20,1) = 230;
+    rgbImage(y_center-10:y_center+10,x_center-20:x_center+20,2) = 230;
+    rgbImage(y_center-10:y_center+10,x_center-20:x_center+20,3) = 230;
+    if movingChoice_list(f) == 0
+        rgbImage(y_center-10:y_center+10,x_center-10:x_center+10,1) = 0;
+        rgbImage(y_center-10:y_center+10,x_center-10:x_center+10,2) = 255;
+        rgbImage(y_center-10:y_center+10,x_center-10:x_center+10,3) = 255;
+    elseif movingChoice_list(f) == 1
+        rgbImage(y_center-10:y_center+10,x_center-20:x_center,1) = 255;
+        rgbImage(y_center-10:y_center+10,x_center-20:x_center,2) = 0;
+        rgbImage(y_center-10:y_center+10,x_center-20:x_center,3) = 0;
+    elseif movingChoice_list(f) == 2
+        rgbImage(y_center-10:y_center+10,x_center:x_center+20,1) = 255;
+        rgbImage(y_center-10:y_center+10,x_center:x_center+20,2) = 0;
+        rgbImage(y_center-10:y_center+10,x_center:x_center+20,3) = 0;
+    end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     writeVideo(vw,rgbImage);

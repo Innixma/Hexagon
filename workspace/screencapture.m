@@ -18,6 +18,6 @@ data = reshape(typecast(jimg.getData.getDataStorage, 'uint8'), 4, w, h);
 %     transpose(reshape(data(2, :, :), w, h)), ...
 %     transpose(reshape(data(1, :, :), w, h)));
 % img = rgb2gray(img);
-img = transpose(reshape(data(3,:,:),w,h));
+img = transpose(reshape(data(2,:,:),w,h));
 end
 

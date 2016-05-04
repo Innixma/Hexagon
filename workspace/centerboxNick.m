@@ -15,7 +15,8 @@ function [centerSize, numSides, wallAngles] = centerboxNick(CropImg)
 
     for i = 1:length(thetas)
         for j = 1:length(radius)        
-            lineIntVal(j) = CropImg(floor(centerY + radius(j)*sind(thetas(i))), floor(centerX + radius(j)*cosd(thetas(i))));
+            %lineIntVal(j) = CropImg(floor(centerY + radius(j)*sind(thetas(i))), floor(centerX + radius(j)*cosd(thetas(i))));
+            lineIntVal(j) = CropImg(floor(centerY - radius(j)*sind(thetas(i))), floor(centerX + radius(j)*cosd(thetas(i))));
             if lineIntVal(j) == 0
                 break;
             end
@@ -36,7 +37,7 @@ ym = mean(y); % Estimate offset
 fit = @(b,x)  (yr/3).*(cos(2*pi*x./b(1) - 2*pi*maxIndex./b(1))) + (ym); % Function to fit
 fcn = @(b) sum((fit(b,x) - y).^2); % Least-Squares cost function
 
-s = fminbnd(fcn, 60, 120);
+s = fminbnd(fcn, 55, 63);
 
 %xp = linspace(min(x),max(x));
 %figure(1)
@@ -50,8 +51,8 @@ for side = 1:numSides
     wallAngles(side) = maxIndex+round((side-1)*s(1));    
 end
 
-[~,rotateCount] = min(wallAngles);
 wallAngles = mod(wallAngles,360);
+[~,rotateCount] = min(wallAngles);
 wallAngles = circshift(wallAngles',-rotateCount+1)';
 centerSize = yu;
 
