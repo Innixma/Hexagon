@@ -38,13 +38,13 @@ function [centerMax, centerMin, numSides, wallAngles] = centerboxNick(CropImg, m
 	fit = @(b,x)  (yr/3).*(cos(2*pi*x./b(1) - 2*pi*maxIndex./b(1))) + (ym); % Function to fit
 	fcn = @(b) sum((fit(b,x) - y).^2); % Least-Squares cost function
 
-	s = fminbnd(fcn, 55, 63);
+	s = fminbnd(fcn, 89, 91);
 	% @TODO try to fit in a smarter way, not just iterating over every theta
 
-%xp = linspace(min(x),max(x));
-%figure(1)
-%plot(x,y,'b',  xp,fit(s,xp), 'r')
-%grid
+    %xp = linspace(min(x),max(x));
+    %figure(1)
+    %plot(x,y,'b',  xp,fit(s,xp), 'r')
+    %grid
 
 	%% get output into a friendly format
 

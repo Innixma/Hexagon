@@ -86,7 +86,7 @@ startingWall_list = zeros(10,2,frames);
 
 framerate = 25; % Approximate amount of frames processed per second
 numSides = 4;
-image_threshold = 0.8; % From 1 to 0, threshold is more strict with higher number
+image_threshold = 0.3; % From 1 to 0, threshold is more strict with higher number
 
 % Lower value = More picky with its position, more prone to error
 centering_threshold = 20; % Angle away from the center of a safe side that the AI is content with being.
@@ -404,7 +404,7 @@ for i = 1:frames
 	% debug
     playerWall_list(i) = playerWallPosition;
     % Incentivize the player to stay in current spot if safe
-    wallDistance(playerWallPosition) = wallDistance(playerWallPosition) + 1;
+    wallDistance(playerWallPosition) = wallDistance(playerWallPosition) + 10;
     
 	%% pathfinding
     
